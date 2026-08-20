@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import models  # noqa: F401
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
+from app.api.super_admin import router as super_admin_router
 from app.utils.config import get_settings
 
 settings = get_settings()
@@ -27,6 +28,7 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(super_admin_router)
 
 
 @app.get("/")

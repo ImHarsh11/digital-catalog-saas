@@ -10,7 +10,8 @@ This is **not** a marketplace: no customer accounts, no shopping cart, no
 online checkout, no multi-branch inventory. One shop = one account = one
 catalog.
 
-> **Status:** Phase 2 (models, migrations, auth, RBAC) complete. See
+> **Status:** Phase 3 (Super Admin: shop CRUD, shop-owner creation, 14-day
+> trial, dashboard stats) complete. See
 > [Development Process](#development-process) below.
 
 ## Architecture
@@ -170,13 +171,38 @@ Demo shop catalog: `/shop/demo-sarees`
   shop's data by guessing an id — it 404s (not 403) on mismatch, so it
   doesn't even confirm the resource exists.
 
+## Super Admin API
+
+All routes below are mounted at `/api/super-admin` and require a SUPER_ADMIN
+bearer token (enforced once, at the router level).
+
+- `GET /dashboard` — total/active/trial shops, expired trials, total
+  products, products added this week.
+- `GET /shops` — list shops with owner name/email and product count.
+- `POST /shops` — creates a shop **and** its owner account in one request;
+  the shop is started on a 14-day trial (`trial_start_date` = today,
+  `trial_end_date` = today + 14 days, `subscription_status` = `TRIAL`).
+  Rejects a duplicate slug or duplicate owner email with `409`.
+- `GET /shops/{id}` — shop detail: stats, owner, recent activity (last 20).
+- `PUT /shops/{id}` — partial update of shop profile fields. The slug is
+  intentionally **not** editable here — it's baked into already-printed QR
+  codes and shared URLs, so changing it would break them.
+- `PATCH /shops/{id}/status` — activate/deactivate a shop's public catalog.
+  This only flips `is_active`; it never touches `subscription_status`,
+  since trial/billing state is not meant to be hand-edited from the UI.
+
+The Super Admin frontend (`/super-admin`, `/super-admin/shops`,
+`/super-admin/shops/:id`) is role-gated by `ProtectedRoute` and covers all of
+the above: dashboard stat cards, a shop table with create/activate/deactivate
+actions, and a shop detail page with an edit dialog and activity feed.
+
 ## Development Process
 
 This project is being built in phases, per the pilot plan:
 
 1. ✅ Repository, frontend/backend scaffolds, PostgreSQL, env config, health check
 2. ✅ Database models, Alembic migrations, seed data, authentication, RBAC
-3. ⬜ Super Admin: shop creation, shop owner creation, 14-day trial
+3. ✅ Super Admin: shop creation, shop owner creation, 14-day trial
 4. ⬜ Shop Owner dashboard: product CRUD, categories, image uploads, status
 5. ⬜ Customer catalog: browsing, product details, search, filters, mobile UI
 6. ⬜ QR code generation, analytics, activity tracking

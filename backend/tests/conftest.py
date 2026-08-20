@@ -13,7 +13,7 @@ from datetime import date, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 # Import side effect: registers all model tables on Base.metadata.
@@ -41,18 +41,36 @@ def _test_schema():
 
 @pytest.fixture()
 def db_session():
+    """A session whose writes -- including a real `db.commit()` from
+    application code (Phase 3's shop create/update endpoints do this) --
+    never actually reach the database.
+
+    Standard SQLAlchemy "join a session into an external transaction"
+    recipe: the outer transaction is never committed, and application-level
+    commits only close a nested SAVEPOINT, which this immediately reopens.
+    Without this, a test that exercises a real commit path would leak data
+    into `digital_catalog_test` and silently break later tests (duplicate
+    slugs/emails, inflated dashboard counts, ...).
+    """
     connection = engine.connect()
-    transaction = connection.begin()
+    outer_transaction = connection.begin()
     session = TestingSessionLocal(bind=connection)
+
+    nested = connection.begin_nested()
+
+    @event.listens_for(session, "after_transaction_end")
+    def _restart_savepoint(sess, trans):
+        nonlocal nested
+        if not nested.is_active:
+            nested = connection.begin_nested()
+
     try:
         yield session
     finally:
+        event.remove(session, "after_transaction_end", _restart_savepoint)
         session.close()
-        # A test that triggers an IntegrityError (e.g. asserting a unique
-        # constraint) already aborts this transaction when flush() fails,
-        # so it may no longer be active by the time we get here.
-        if transaction.is_active:
-            transaction.rollback()
+        if outer_transaction.is_active:
+            outer_transaction.rollback()
         connection.close()
 
 
@@ -65,6 +83,18 @@ def client(db_session):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+def auth_headers(client, email: str, password: str) -> dict[str, str]:
+    """Log in via the real endpoint and return an Authorization header.
+
+    Exercises the actual login flow (rather than minting a token directly)
+    so every test using it also incidentally re-verifies login works.
+    """
+    resp = client.post("/api/auth/login", json={"email": email, "password": password})
+    assert resp.status_code == 200, resp.text
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
 
 
 # --- Common domain fixtures --------------------------------------------
