@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* Fashion/clothing-appropriate professional palette */
+  --color-brand-50: #fdf3f4;
+  --color-brand-100: #fbe3e5;
+  --color-brand-200: #f6c8cd;
+  --color-brand-300: #eea1aa;
+  --color-brand-400: #e2707e;
+  --color-brand-500: #cf4a5c;
+  --color-brand-600: #b12f42;
+  --color-brand-700: #932436;
+  --color-brand-800: #7a2131;
+  --color-brand-900: #691f2d;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

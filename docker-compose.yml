@@ -1,0 +1,23 @@
+version: "3.9"
+
+# Local development convenience stack. For Phase 1 this only runs
+# PostgreSQL — the frontend and backend are run directly on the host via
+# `npm run dev` / `uvicorn` so hot-reload works well. Backend/frontend
+# services can be added here later if a fully containerized dev flow is
+# wanted.
+services:
+  postgres:
+    image: postgres:16
+    container_name: digital-catalog-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: catalog_user
+      POSTGRES_PASSWORD: catalog_pass
+      POSTGRES_DB: digital_catalog
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
