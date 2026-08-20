@@ -10,8 +10,8 @@ This is **not** a marketplace: no customer accounts, no shopping cart, no
 online checkout, no multi-branch inventory. One shop = one account = one
 catalog.
 
-> **Status:** Phase 1 (project scaffold) complete. See [Development
-> Process](#development-process) below.
+> **Status:** Phase 2 (models, migrations, auth, RBAC) complete. See
+> [Development Process](#development-process) below.
 
 ## Architecture
 
@@ -36,7 +36,8 @@ Three user roles share one backend and one frontend app:
 TanStack Query, Lucide React icons, Axios.
 
 **Backend:** Python, FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic,
-PostgreSQL, JWT auth (python-jose), password hashing (passlib/bcrypt).
+PostgreSQL, JWT auth (python-jose), password hashing (`bcrypt` directly —
+not passlib, to avoid its known incompatibility with bcrypt ≥4.1).
 
 **Image storage:** abstracted behind a storage provider interface
 (`IMAGE_STORAGE_PROVIDER`) so it can point at local disk during development
@@ -80,14 +81,18 @@ The API will be available at `http://localhost:8000`, with interactive docs
 at `http://localhost:8000/docs`, and a health check at
 `http://localhost:8000/api/health`.
 
-#### Migrations (added in Phase 2)
+#### Migrations
 
 ```bash
 alembic upgrade head                        # apply migrations
 alembic revision --autogenerate -m "..."    # create a new migration
 ```
 
-#### Seed data (added in Phase 2)
+#### Seed data
+
+Populates a Super Admin, one demo shop on a 14-day trial, a shop-owner
+account, 5 categories, and ~30 demo products (safe to re-run — it skips
+anything that already exists):
 
 ```bash
 python -m app.database.seed
@@ -107,7 +112,8 @@ The app will be available at `http://localhost:5173`.
 ### 4. Tests
 
 ```bash
-# Backend
+# Backend — needs its own database (never run against the dev DB):
+#   CREATE DATABASE digital_catalog_test OWNER catalog_user;
 cd backend && source venv/bin/activate && pytest
 
 # Frontend
@@ -136,16 +142,40 @@ cd frontend && npm run lint && npm run build
 
 ## Demo Credentials
 
-Demo/seed accounts are created in Phase 2 and documented here once added.
-**These credentials are for local development only and must never be used
-in production.**
+Created by `python -m app.database.seed`. **These credentials are for local
+development only and must never be used, or left enabled, in production.**
+
+| Role | Email | Password |
+|---|---|---|
+| Super Admin | `admin@example.com` | `Admin123!` |
+| Shop Owner (Demo Sarees) | `owner@example.com` | `Owner123!` |
+
+Demo shop catalog: `/shop/demo-sarees`
+
+## Authentication & Authorization
+
+- `POST /api/auth/login` — email + password, returns a JWT bearer token.
+- `GET /api/auth/me` — returns the current user, plus shop + trial info for
+  shop owners.
+- Passwords are hashed with `bcrypt` (never stored or logged in plain text).
+- Every protected endpoint resolves the current user by re-fetching from the
+  database on each request (not just trusting the token payload), so a
+  deactivated account loses access immediately rather than after the token
+  expires.
+- `require_role(...)` and `get_current_shop_owner` (in
+  `app/auth/dependencies.py`) are the reusable dependencies Phase 3/4
+  endpoints will use to enforce SUPER_ADMIN vs SHOP_OWNER access.
+- `verify_shop_ownership(user, shop_id)` is the helper that will guard every
+  shop-scoped endpoint so a shop owner can never read or modify another
+  shop's data by guessing an id — it 404s (not 403) on mismatch, so it
+  doesn't even confirm the resource exists.
 
 ## Development Process
 
 This project is being built in phases, per the pilot plan:
 
 1. ✅ Repository, frontend/backend scaffolds, PostgreSQL, env config, health check
-2. ⬜ Database models, Alembic migrations, seed data, authentication, RBAC
+2. ✅ Database models, Alembic migrations, seed data, authentication, RBAC
 3. ⬜ Super Admin: shop creation, shop owner creation, 14-day trial
 4. ⬜ Shop Owner dashboard: product CRUD, categories, image uploads, status
 5. ⬜ Customer catalog: browsing, product details, search, filters, mobile UI

@@ -13,9 +13,9 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.database.session import Base  # noqa: E402
 from app.utils.config import get_settings  # noqa: E402
 
-# Import model modules here (as they're added in Phase 2) so their tables
-# register on Base.metadata for autogenerate support, e.g.:
-# from app.models import user, shop, category, product  # noqa: F401
+# Importing app.models registers every model's table on Base.metadata,
+# which is required for autogenerate to see them.
+from app import models  # noqa: E402,F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
