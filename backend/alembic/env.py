@@ -23,7 +23,10 @@ config = context.config
 
 # Use the DATABASE_URL from our app settings/.env instead of the static
 # value in alembic.ini, so there's a single source of truth.
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+# ConfigParser uses % as an escape character, so literal % in URLs (e.g.
+# %40 for @ in a password) must be doubled to %% before being stored via
+# set_main_option — ConfigParser unescapes them when reading back.
+config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
