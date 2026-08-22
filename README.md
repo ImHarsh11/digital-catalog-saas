@@ -10,8 +10,8 @@ This is **not** a marketplace: no customer accounts, no shopping cart, no
 online checkout, no multi-branch inventory. One shop = one account = one
 catalog.
 
-> **Status:** Phase 4 (Shop Owner: product & category management, image
-> uploads, status changes) complete. See
+> **Status:** Phase 5 (public customer catalog: `/shop/:slug` browsing,
+> product detail, search/filter/sort, anonymous analytics) complete. See
 > [Development Process](#development-process) below.
 
 ## Architecture
@@ -257,6 +257,59 @@ tap-to-upload, per-photo delete and primary selection with upload progress
 bars, category management, and a settings page for the shop's own profile
 and catalog link.
 
+## Public Catalog API
+
+All routes below are mounted at `/api/public/shops/{shop_slug}` and require
+**no authentication at all** -- these are the only endpoints in the app a
+customer (no account, no login) ever calls. Every route resolves the shop
+by slug first; a slug that matches nothing returns `404`, and a slug that
+matches an inactive/suspended shop returns `403` with a generic "This
+catalog is currently unavailable." message -- neither response reveals
+*why* (subscription/trial state never appears in a public response).
+Product detail is looked up by `(shop_id, product_id)` together, using the
+shop already resolved from the URL slug, so a product belonging to a
+different shop 404s exactly like a nonexistent one.
+
+- `GET /{shop_slug}` -- shop profile (name, logo, description, contact
+  info -- no trial/subscription/internal fields) plus its active
+  categories. Records a `SHOP_VIEW` customer event.
+- `GET /{shop_slug}/products` -- paginated product list. Supports
+  `?category_id=`, `?availability=available|unavailable` (`unavailable`
+  groups SOLD and OUT_OF_STOCK together, since the customer-facing filter
+  is "can I buy this or not", not the shop owner's 3-way status),
+  `?search=` (matches name or product code), `?sort=newest|price_asc|
+  price_desc`, and `?page=`/`?page_size=` (default 24, max 60). Records a
+  `SEARCH` and/or `CATEGORY_VIEW` event when those params are present.
+- `GET /{shop_slug}/products/{product_id}` -- full product detail
+  (description, all images). Records a `PRODUCT_VIEW` event.
+
+Every response is built from its own `app/schemas/public.py` models, kept
+deliberately separate from the shop-owner schemas -- `created_by`,
+`catalog_activity`, internal timestamps, and trial/subscription fields
+physically cannot appear in a public response because those schemas have
+no field for them, rather than being hidden ad hoc at the API layer.
+
+Anonymous analytics (`customer_events`, unused until this phase): every
+public request carries an `X-Anon-Session-Id` header -- a random,
+non-personal id the frontend generates once per browser tab
+(`sessionStorage`, with an in-memory fallback) and sends on every request,
+purely so events can be grouped without identifying anyone. No customer
+accounts exist to tie events to, and none of this is exposed as a
+dashboard yet (analytics dashboard is a later phase).
+
+The customer catalog frontend (`/shop/:shopSlug`,
+`/shop/:shopSlug/product/:productId`) is a separate, mobile-first
+experience from the admin dashboards -- no login, no nav chrome, no
+admin-style tables. The catalog page shows the shop's branding, a sticky
+search bar, horizontally-scrolling category chips, an availability
+toggle, a sort dropdown, and an infinite-scroll ("Load more") product
+grid; the product page shows a tap-through image gallery, price,
+description, and a Share button (Web Share API where supported, falling
+back to copy-to-clipboard). Every product image goes through a shared
+`ProductImage` component that shows a loading skeleton and falls back to
+a neutral placeholder icon on a missing or broken URL, so a bad photo
+never breaks a card's layout.
+
 ## Development Process
 
 This project is being built in phases, per the pilot plan:
@@ -265,8 +318,8 @@ This project is being built in phases, per the pilot plan:
 2. ✅ Database models, Alembic migrations, seed data, authentication, RBAC
 3. ✅ Super Admin: shop creation, shop owner creation, 14-day trial
 4. ✅ Shop Owner dashboard: product CRUD, categories, image uploads, status
-5. ⬜ Customer catalog: browsing, product details, search, filters, mobile UI
-6. ⬜ QR code generation, analytics, activity tracking
+5. ✅ Customer catalog: browsing, product details, search, filters, mobile UI
+6. ⬜ QR code generation, pilot analytics dashboard
 7. ⬜ Polish: responsive UI, loading/error states, security hardening, docs
 
 ## Deployment

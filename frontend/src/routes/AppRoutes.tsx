@@ -7,6 +7,8 @@ import SuperAdminLayout from '@/layouts/SuperAdminLayout';
 import ShopOwnerLayout from '@/layouts/ShopOwnerLayout';
 import LoginPage from '@/pages/LoginPage';
 import NotFoundPage from '@/pages/NotFoundPage';
+import ShopCatalogPage from '@/pages/catalog/ShopCatalogPage';
+import ProductDetailPage from '@/pages/catalog/ProductDetailPage';
 import ShopOwnerDashboardPage from '@/pages/admin/DashboardPage';
 import ProductsPage from '@/pages/admin/ProductsPage';
 import ProductFormPage from '@/pages/admin/ProductFormPage';
@@ -39,6 +41,10 @@ export default function AppRoutes() {
     <Routes>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
+
+      {/* Customer catalog -- no login, no ProtectedRoute wrapper. */}
+      <Route path="/shop/:shopSlug" element={<ShopCatalogPage />} />
+      <Route path="/shop/:shopSlug/product/:productId" element={<ProductDetailPage />} />
 
       <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
         <Route element={<SuperAdminLayout />}>
