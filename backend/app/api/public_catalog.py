@@ -138,9 +138,13 @@ def list_shop_products(
     # can both be true of the same request (e.g. searching within a
     # category), so both are logged independently rather than one winning.
     if search:
-        catalog_service.record_event(db, shop.id, CustomerEventType.SEARCH, session_id=anon_session_id)
+        catalog_service.record_event(
+            db, shop.id, CustomerEventType.SEARCH, search_query=search, session_id=anon_session_id
+        )
     if category_id is not None:
-        catalog_service.record_event(db, shop.id, CustomerEventType.CATEGORY_VIEW, session_id=anon_session_id)
+        catalog_service.record_event(
+            db, shop.id, CustomerEventType.CATEGORY_VIEW, category_id=category_id, session_id=anon_session_id
+        )
     db.commit()
 
     return PublicProductPage(

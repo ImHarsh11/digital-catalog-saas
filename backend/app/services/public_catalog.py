@@ -142,17 +142,24 @@ def record_event(
     event_type: CustomerEventType,
     *,
     product_id: int | None = None,
+    category_id: int | None = None,
+    search_query: str | None = None,
     session_id: str | None = None,
 ) -> None:
     """Fire-and-forget anonymous analytics write. No personal information is
     collected -- `session_id` is an opaque, browser-generated identifier the
-    frontend never ties to any account (customers don't have one)."""
+    frontend never ties to any account (customers don't have one).
+    `category_id` (CATEGORY_VIEW) and `search_query` (SEARCH) let the Phase 6
+    shop-owner analytics dashboard surface top categories/search terms;
+    both are simply left null for every other event type."""
     db.add(
         CustomerEvent(
             shop_id=shop_id,
             product_id=product_id,
+            category_id=category_id,
             event_type=event_type,
             anonymous_session_id=session_id[:64] if session_id else None,
+            search_query=search_query[:255] if search_query else None,
         )
     )
     db.flush()

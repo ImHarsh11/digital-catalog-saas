@@ -5,6 +5,7 @@ the router level (`dependencies=[...]`) rather than repeated per-endpoint.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -25,6 +26,7 @@ from app.schemas.shop import (
     ShopUpdate,
 )
 from app.schemas.user import UserRead
+from app.services import qr as qr_service
 from app.services import shop as shop_service
 from app.services.trial import trial_days_remaining, trial_status_label
 
@@ -153,6 +155,21 @@ def get_shop_detail(shop_id: int, db: Session = Depends(get_db)) -> ShopDetailRe
         for activity in activities
     ]
     return ShopDetailResponse(shop=_to_detail(shop, stats), recent_activity=recent_activity)
+
+
+@router.get("/shops/{shop_id}/qr-code", response_class=Response)
+def get_shop_qr_code(shop_id: int, db: Session = Depends(get_db)) -> Response:
+    """PNG QR code encoding this shop's public catalog URL, for a Super
+    Admin to print/display when onboarding a new shop. Not cached -- it's
+    cheap to regenerate and the shop's slug can change (see `update_shop`).
+    """
+    shop = _get_shop_or_404(db, shop_id)
+    png_bytes = qr_service.generate_shop_qr_png(shop.slug)
+    return Response(
+        content=png_bytes,
+        media_type="image/png",
+        headers={"Content-Disposition": f'inline; filename="{shop.slug}-qr-code.png"'},
+    )
 
 
 @router.put("/shops/{shop_id}", response_model=ShopDetail)

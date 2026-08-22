@@ -10,9 +10,9 @@ This is **not** a marketplace: no customer accounts, no shopping cart, no
 online checkout, no multi-branch inventory. One shop = one account = one
 catalog.
 
-> **Status:** Phase 5 (public customer catalog: `/shop/:slug` browsing,
-> product detail, search/filter/sort, anonymous analytics) complete. See
-> [Development Process](#development-process) below.
+> **Status:** Phase 6 (Super Admin QR code generation, Shop Owner pilot
+> analytics dashboard) complete. See [Development Process](#development-process)
+> below.
 
 ## Architecture
 
@@ -136,6 +136,7 @@ cd frontend && npm run lint && npm run build
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Required when using Cloudinary |
 | `UPLOAD_DIR` | Local disk folder for uploaded product photos (only used when `IMAGE_STORAGE_PROVIDER=local`) |
 | `API_BASE_URL` | Base URL the backend is reachable at — used to build absolute image URLs for local storage |
+| `CATALOG_BASE_URL` | Base URL of the customer-facing catalog frontend (not this API) — used to build the `/shop/{slug}` URL a Super Admin's QR code encodes |
 
 ### Frontend (`frontend/.env`)
 
@@ -195,11 +196,19 @@ bearer token (enforced once, at the router level).
 - `PATCH /shops/{id}/status` — activate/deactivate a shop's public catalog.
   This only flips `is_active`; it never touches `subscription_status`,
   since trial/billing state is not meant to be hand-edited from the UI.
+- `GET /shops/{id}/qr-code` — a PNG QR code encoding
+  `{CATALOG_BASE_URL}/shop/{slug}`, for printing when onboarding a new shop.
+  Generated fresh on every request from the shop's current slug (not
+  persisted anywhere), so it's always correct even if the slug later
+  changes. Super Admin only — shop owners don't get self-serve QR
+  generation in this phase.
 
 The Super Admin frontend (`/super-admin`, `/super-admin/shops`,
 `/super-admin/shops/:id`) is role-gated by `ProtectedRoute` and covers all of
 the above: dashboard stat cards, a shop table with create/activate/deactivate
-actions, and a shop detail page with an edit dialog and activity feed.
+actions, and a shop detail page with an edit dialog, activity feed, and a
+"QR Code" button that opens a modal with a scannable preview and a download
+link.
 
 ## Shop Owner API
 
@@ -239,6 +248,16 @@ a request body.
   if none remain.
 - `PATCH /products/{id}/images/{image_id}/primary` — explicitly choose the
   primary image.
+- `GET /analytics` — pilot analytics for the shop's own catalog: shop-view,
+  product-view, and search counts (all-time and last-7-days), plus top-5
+  lists for most-viewed products, most-searched terms (grouped
+  case-insensitively), and category interest. Deliberately simple stat
+  cards + top-N lists, matching the existing dashboard's style — no time
+  series, no new charting dependency. Built entirely from `customer_events`
+  rows the public catalog already records (see Public Catalog API below);
+  a product or category that's since been deleted simply drops out of the
+  relevant top-N list (`ON DELETE SET NULL` keeps the historical event, but
+  it can no longer be resolved to a name/image).
 
 Image storage is abstracted behind `ImageStorage`
 (`app/services/storage.py`): `LocalImageStorage` writes to `UPLOAD_DIR` and
@@ -249,13 +268,15 @@ change, not a code change. Storage deletes always happen *after* the
 database transaction that removes the row has committed, never before.
 
 The Shop Owner frontend (`/admin`, `/admin/products`, `/admin/products/new`,
-`/admin/products/:id/edit`, `/admin/categories`, `/admin/settings`) covers
-all of the above: a dashboard, a searchable/filterable product grid with
-inline mark-sold/available and delete, a deliberately minimal product
-form (core fields first, photos right after saving) with drag-free
-tap-to-upload, per-photo delete and primary selection with upload progress
-bars, category management, and a settings page for the shop's own profile
-and catalog link.
+`/admin/products/:id/edit`, `/admin/categories`, `/admin/analytics`,
+`/admin/settings`) covers all of the above: a dashboard, a
+searchable/filterable product grid with inline mark-sold/available and
+delete, a deliberately minimal product form (core fields first, photos
+right after saving) with drag-free tap-to-upload, per-photo delete and
+primary selection with upload progress bars, category management, an
+analytics page with stat cards and most-viewed/most-searched/category-
+interest lists, and a settings page for the shop's own profile and catalog
+link.
 
 ## Public Catalog API
 
@@ -289,13 +310,15 @@ deliberately separate from the shop-owner schemas -- `created_by`,
 physically cannot appear in a public response because those schemas have
 no field for them, rather than being hidden ad hoc at the API layer.
 
-Anonymous analytics (`customer_events`, unused until this phase): every
-public request carries an `X-Anon-Session-Id` header -- a random,
-non-personal id the frontend generates once per browser tab
-(`sessionStorage`, with an in-memory fallback) and sends on every request,
-purely so events can be grouped without identifying anyone. No customer
-accounts exist to tie events to, and none of this is exposed as a
-dashboard yet (analytics dashboard is a later phase).
+Anonymous analytics (`customer_events`): every public request carries an
+`X-Anon-Session-Id` header -- a random, non-personal id the frontend
+generates once per browser tab (`sessionStorage`, with an in-memory
+fallback) and sends on every request, purely so events can be grouped
+without identifying anyone. No customer accounts exist to tie events to.
+A `SEARCH` event also stores the raw `search_query` text and a
+`CATEGORY_VIEW` event stores which `category_id` was browsed (both added
+in Phase 6) so the Shop Owner analytics endpoint above can surface top
+search terms and category interest.
 
 The customer catalog frontend (`/shop/:shopSlug`,
 `/shop/:shopSlug/product/:productId`) is a separate, mobile-first
@@ -319,7 +342,7 @@ This project is being built in phases, per the pilot plan:
 3. ✅ Super Admin: shop creation, shop owner creation, 14-day trial
 4. ✅ Shop Owner dashboard: product CRUD, categories, image uploads, status
 5. ✅ Customer catalog: browsing, product details, search, filters, mobile UI
-6. ⬜ QR code generation, pilot analytics dashboard
+6. ✅ Super Admin QR code generation, Shop Owner pilot analytics dashboard
 7. ⬜ Polish: responsive UI, loading/error states, security hardening, docs
 
 ## Deployment

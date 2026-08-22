@@ -20,6 +20,7 @@ import ErrorState from '@/components/ErrorState';
 import Badge from '@/components/Badge';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ShopEditDialog from '@/components/super-admin/ShopEditDialog';
+import QrCodeModal from '@/components/super-admin/QrCodeModal';
 import { useToast } from '@/hooks/useToast';
 
 export default function ShopDetailPage() {
@@ -30,6 +31,7 @@ export default function ShopDetailPage() {
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isConfirmingDeactivate, setIsConfirmingDeactivate] = useState(false);
+  const [isQrOpen, setIsQrOpen] = useState(false);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['super-admin', 'shops', shopId],
@@ -93,12 +95,24 @@ export default function ShopDetailPage() {
               {shop.trial_status_label}
             </Badge>
           </div>
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-neutral-500">
+          <button
+            type="button"
+            onClick={() => setIsQrOpen(true)}
+            className="mt-1 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-brand-700"
+          >
             <QrCode className="h-4 w-4" />
             /shop/{shop.slug}
-          </p>
+          </button>
         </div>
         <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setIsQrOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3.5 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          >
+            <QrCode className="h-4 w-4" />
+            QR Code
+          </button>
           <button
             type="button"
             onClick={() => setIsEditOpen(true)}
@@ -207,6 +221,15 @@ export default function ShopDetailPage() {
       </div>
 
       {isEditOpen && <ShopEditDialog shop={shop} onClose={() => setIsEditOpen(false)} />}
+
+      {isQrOpen && (
+        <QrCodeModal
+          shopId={shop.id}
+          shopName={shop.name}
+          shopSlug={shop.slug}
+          onClose={() => setIsQrOpen(false)}
+        />
+      )}
 
       {isConfirmingDeactivate && (
         <ConfirmDialog

@@ -40,3 +40,14 @@ export async function setShopStatus(shopId: number, isActive: boolean): Promise<
   });
   return data;
 }
+
+// Fetched as a blob (rather than pointed at directly with an <img src>)
+// because the endpoint requires the Super Admin's Authorization header --
+// a plain <img>/<a> tag can't attach one. The resulting blob: URL then
+// works for both an inline preview and a same-origin download link.
+export async function getShopQrCode(shopId: number): Promise<Blob> {
+  const { data } = await api.get<Blob>(`/api/super-admin/shops/${shopId}/qr-code`, {
+    responseType: 'blob',
+  });
+  return data;
+}

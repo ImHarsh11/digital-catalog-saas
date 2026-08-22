@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, Package, Settings as SettingsIcon, Shirt, Tags } from 'lucide-react';
+import { BarChart3, LayoutDashboard, LogOut, Package, Settings as SettingsIcon, Shirt, Tags } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -52,6 +52,10 @@ export default function ShopOwnerLayout() {
           <NavLink to="/admin/categories" className={navLinkClass}>
             <Tags className="h-4 w-4" />
             Categories
+          </NavLink>
+          <NavLink to="/admin/analytics" className={navLinkClass}>
+            <BarChart3 className="h-4 w-4" />
+            Analytics
           </NavLink>
           <NavLink to="/admin/settings" className={navLinkClass}>
             <SettingsIcon className="h-4 w-4" />

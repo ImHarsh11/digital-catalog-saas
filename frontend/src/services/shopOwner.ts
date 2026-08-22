@@ -1,9 +1,14 @@
 import { api } from './api';
-import type { ShopOwnerDashboardStats } from '@/types/dashboard';
+import type { ShopAnalytics, ShopOwnerDashboardStats } from '@/types/dashboard';
 import type { ShopDetail, ShopUpdateInput } from '@/types/shop';
 
 export async function getShopOwnerDashboard(shopId: number): Promise<ShopOwnerDashboardStats> {
   const { data } = await api.get<ShopOwnerDashboardStats>(`/api/shops/${shopId}/dashboard`);
+  return data;
+}
+
+export async function getShopAnalytics(shopId: number): Promise<ShopAnalytics> {
+  const { data } = await api.get<ShopAnalytics>(`/api/shops/${shopId}/analytics`);
   return data;
 }
 

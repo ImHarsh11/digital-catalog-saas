@@ -2,7 +2,8 @@
 
 Covers: role enforcement on every route, shop creation (auto trial +
 owner account), listing, detail (+ recent activity), profile update,
-activate/deactivate, and dashboard stats.
+activate/deactivate, dashboard stats, and (Phase 6) shop QR-code
+generation.
 """
 
 from datetime import date, timedelta
@@ -396,6 +397,48 @@ def test_dashboard_counts(client, db_session, super_admin, shop_a, shop_b):
     assert stats["expired_trials"] == 1  # expired_shop
     assert stats["total_products"] == 2
     assert stats["products_added_this_week"] == 2
+
+
+# --- QR code (Phase 6) ------------------------------------------------------
+
+
+def test_qr_code_requires_authentication(client, shop_a):
+    resp = client.get(f"/api/super-admin/shops/{shop_a.id}/qr-code")
+    assert resp.status_code == 401
+
+
+def test_qr_code_rejects_shop_owner(client, owner_a, shop_a):
+    headers = auth_headers(client, "ownera@test.com", "OwnerA123!")
+    resp = client.get(f"/api/super-admin/shops/{shop_a.id}/qr-code", headers=headers)
+    assert resp.status_code == 403
+
+
+def test_qr_code_returns_png_image(client, super_admin, shop_a):
+    headers = auth_headers(client, "admin@test.com", "Admin123!")
+    resp = client.get(f"/api/super-admin/shops/{shop_a.id}/qr-code", headers=headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"] == "image/png"
+    # A real PNG, not an empty/placeholder response.
+    assert resp.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert len(resp.content) > 100
+
+
+def test_qr_code_unknown_shop_returns_404(client, super_admin):
+    headers = auth_headers(client, "admin@test.com", "Admin123!")
+    resp = client.get("/api/super-admin/shops/999999/qr-code", headers=headers)
+    assert resp.status_code == 404
+
+
+def test_qr_code_uses_the_shops_current_slug(client, super_admin, shop_a):
+    """The URL a QR code encodes isn't asserted by decoding the image (no
+    scanning library dependency needed) -- instead `build_shop_catalog_url`
+    is checked directly, and this confirms the endpoint 200s per-shop."""
+    from app.services.qr import build_shop_catalog_url
+
+    headers = auth_headers(client, "admin@test.com", "Admin123!")
+    resp = client.get(f"/api/super-admin/shops/{shop_a.id}/qr-code", headers=headers)
+    assert resp.status_code == 200
+    assert build_shop_catalog_url(shop_a.slug) == f"http://localhost:5173/shop/{shop_a.slug}"
 
 
 # --- helpers ---------------------------------------------------------------

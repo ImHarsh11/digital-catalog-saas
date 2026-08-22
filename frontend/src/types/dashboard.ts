@@ -20,3 +20,35 @@ export interface ShopOwnerDashboardStats {
   trial_days_remaining: number;
   trial_status_label: string;
 }
+
+// --- Phase 6 pilot analytics --------------------------------------------
+
+export interface TopProductStat {
+  product_id: number;
+  name: string;
+  primary_image_url: string | null;
+  view_count: number;
+}
+
+export interface TopSearchTerm {
+  term: string;
+  count: number;
+}
+
+export interface TopCategoryStat {
+  category_id: number;
+  name: string;
+  view_count: number;
+}
+
+export interface ShopAnalytics {
+  shop_views_total: number;
+  shop_views_last_7_days: number;
+  product_views_total: number;
+  product_views_last_7_days: number;
+  searches_total: number;
+  searches_last_7_days: number;
+  top_products: TopProductStat[];
+  top_searches: TopSearchTerm[];
+  top_categories: TopCategoryStat[];
+}

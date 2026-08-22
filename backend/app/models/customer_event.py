@@ -8,6 +8,7 @@ from app.database.session import Base
 from app.models.enums import CustomerEventType
 
 if TYPE_CHECKING:
+    from app.models.category import Category
     from app.models.product import Product
     from app.models.shop import Shop
 
@@ -27,6 +28,12 @@ class CustomerEvent(Base):
     product_id: Mapped[int | None] = mapped_column(
         ForeignKey("products.id", ondelete="SET NULL"), nullable=True
     )
+    # Which category a CATEGORY_VIEW event was for (null for every other
+    # event type). SET NULL so a later category deletion doesn't destroy
+    # historical analytics rows -- Phase 6 addition.
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
+    )
     event_type: Mapped[CustomerEventType] = mapped_column(
         Enum(CustomerEventType, name="customer_event_type", native_enum=True), nullable=False
     )
@@ -36,9 +43,15 @@ class CustomerEvent(Base):
     # Anonymous, ephemeral, browser-generated session id — not tied to any
     # personal identity. Used only to de-duplicate/session-group events.
     anonymous_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # The raw search text for a SEARCH event (null for every other event
+    # type). Not collected in Phase 5 -- added in Phase 6 so the pilot
+    # analytics dashboard can surface top searched terms; existing rows
+    # simply have no value here.
+    search_query: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     shop: Mapped["Shop"] = relationship(back_populates="customer_events")
     product: Mapped["Product | None"] = relationship()
+    category: Mapped["Category | None"] = relationship()
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"<CustomerEvent id={self.id} shop_id={self.shop_id} type={self.event_type}>"

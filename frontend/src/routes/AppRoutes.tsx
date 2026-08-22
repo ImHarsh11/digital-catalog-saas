@@ -14,6 +14,7 @@ import ProductsPage from '@/pages/admin/ProductsPage';
 import ProductFormPage from '@/pages/admin/ProductFormPage';
 import CategoriesPage from '@/pages/admin/CategoriesPage';
 import SettingsPage from '@/pages/admin/SettingsPage';
+import AnalyticsPage from '@/pages/admin/AnalyticsPage';
 import DashboardPage from '@/pages/super-admin/DashboardPage';
 import ShopDetailPage from '@/pages/super-admin/ShopDetailPage';
 import ShopsPage from '@/pages/super-admin/ShopsPage';
@@ -61,6 +62,7 @@ export default function AppRoutes() {
           <Route path="/admin/products/new" element={<ProductFormPage />} />
           <Route path="/admin/products/:id/edit" element={<ProductFormPage />} />
           <Route path="/admin/categories" element={<CategoriesPage />} />
+          <Route path="/admin/analytics" element={<AnalyticsPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
         </Route>
       </Route>

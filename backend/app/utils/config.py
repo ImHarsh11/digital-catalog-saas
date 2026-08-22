@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     api_base_url: str = "http://localhost:8000"
 
+    # Base URL of the customer-facing catalog frontend (not this API) --
+    # used to build the `/shop/{slug}` URL a Super Admin's QR code encodes.
+    catalog_base_url: str = "http://localhost:5173"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

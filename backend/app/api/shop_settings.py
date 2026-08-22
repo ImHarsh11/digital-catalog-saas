@@ -13,8 +13,10 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import require_shop_access
 from app.database.session import get_db
 from app.models.user import User
+from app.schemas.analytics import ShopAnalytics
 from app.schemas.dashboard import ShopOwnerDashboardStats
 from app.schemas.shop import ShopDetail, ShopOwnerBrief, ShopUpdate
+from app.services import analytics as analytics_service
 from app.services import shop as shop_service
 from app.services.trial import trial_days_remaining, trial_status_label
 
@@ -86,6 +88,16 @@ def get_profile(
     shop = _get_shop_or_404(db, shop_id)
     stats = shop_service.get_shop_stats(db, shop_id)
     return _to_profile(shop, stats)
+
+
+@router.get("/analytics", response_model=ShopAnalytics)
+def get_analytics(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_shop_access),
+) -> ShopAnalytics:
+    _get_shop_or_404(db, shop_id)
+    return ShopAnalytics(**analytics_service.get_shop_analytics(db, shop_id))
 
 
 @router.put("/profile", response_model=ShopDetail)
