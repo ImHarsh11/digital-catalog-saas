@@ -102,7 +102,7 @@ export default function ShopsPage() {
       )}
 
       {shops && shops.length > 0 && (
-        <div className="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-neutral-200 bg-white">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-medium uppercase tracking-wide text-neutral-500">
               <tr>

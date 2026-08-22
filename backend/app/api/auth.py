@@ -1,6 +1,6 @@
 """Authentication endpoints: POST /api/auth/login, GET /api/auth/me."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -13,12 +13,14 @@ from app.schemas.me import MeResponse
 from app.schemas.shop import ShopBrief
 from app.schemas.user import UserRead
 from app.services.trial import trial_days_remaining, trial_status_label
+from app.utils.rate_limit import limiter
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+@limiter.limit("10/minute")
+def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     invalid_credentials = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Incorrect email or password.",

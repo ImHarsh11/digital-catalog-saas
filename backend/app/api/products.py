@@ -6,7 +6,7 @@ endpoint resolves the caller through `require_shop_access` (404s a shop
 owner reaching for another shop's id, always lets a super admin through).
 """
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_shop_access
@@ -27,6 +27,7 @@ from app.schemas.product import (
 )
 from app.services import product as product_service
 from app.services.storage import ImageValidationError, get_image_storage
+from app.utils.rate_limit import limiter
 
 router = APIRouter(prefix="/api/shops/{shop_id}/products", tags=["products"])
 
@@ -181,7 +182,9 @@ def delete_product(
     response_model=ProductImageUploadResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("30/minute")
 async def upload_product_image(
+    request: Request,
     shop_id: int,
     product_id: int,
     db: Session = Depends(get_db),

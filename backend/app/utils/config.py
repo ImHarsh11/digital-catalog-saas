@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     cloudinary_api_key: str = ""
     cloudinary_api_secret: str = ""
 
+    # Supabase Storage -- used when IMAGE_STORAGE_PROVIDER=supabase
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+    supabase_storage_bucket: str = "product-images"
+
     # Where local-storage image files are written to disk, and the base URL
     # they're served from (mounted as static files in app.main). Only used
     # when image_storage_provider == "local" -- irrelevant for Cloudinary,

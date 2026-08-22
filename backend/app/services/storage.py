@@ -147,9 +147,65 @@ class CloudinaryImageStorage(ImageStorage):
             pass
 
 
+class SupabaseImageStorage(ImageStorage):
+    """Supabase Storage-backed image storage for production.
+
+    Uses the service-role key to upload into a public bucket so images
+    are served via Supabase's CDN without per-request auth.  The bucket
+    must already exist and be set to **public** in the Supabase dashboard.
+
+    Implemented via raw httpx calls against the Supabase Storage REST API
+    to avoid a dependency on the ``storage3`` SDK (which pins a newer
+    pydantic than the rest of the project currently uses).
+    """
+
+    def __init__(self, supabase_url: str, service_role_key: str, bucket: str):
+        import httpx
+
+        self._bucket = bucket
+        self._base_url = f"{supabase_url.rstrip('/')}/storage/v1"
+        self._client = httpx.Client(
+            base_url=self._base_url,
+            headers={
+                "Authorization": f"Bearer {service_role_key}",
+                "apikey": service_role_key,
+            },
+            timeout=30.0,
+        )
+
+    def save(self, content: bytes, content_type: str, *, folder: str) -> str:
+        ext = ALLOWED_CONTENT_TYPES[content_type]
+        filename = f"{uuid.uuid4().hex}.{ext}"
+        path = f"{folder}/{filename}"
+        resp = self._client.post(
+            f"/object/{self._bucket}/{path}",
+            content=content,
+            headers={"Content-Type": content_type, "x-upsert": "false"},
+        )
+        resp.raise_for_status()
+        return f"{self._base_url}/object/public/{self._bucket}/{path}"
+
+    def delete(self, url: str) -> None:
+        prefix = f"{self._base_url}/object/public/{self._bucket}/"
+        if not url.startswith(prefix):
+            return
+        path = url[len(prefix):]
+        try:
+            self._client.request(
+                "DELETE",
+                f"/object/{self._bucket}",
+                json={"prefixes": [path]},
+            )
+        except Exception:
+            # Best-effort: orphaned remote file is less bad than a 500.
+            pass
+
+
 def get_image_storage() -> ImageStorage:
     settings = get_settings()
-    if settings.image_storage_provider == "cloudinary":
+    provider = settings.image_storage_provider
+
+    if provider == "cloudinary":
         if not (
             settings.cloudinary_cloud_name
             and settings.cloudinary_api_key
@@ -165,4 +221,18 @@ def get_image_storage() -> ImageStorage:
             settings.cloudinary_api_key,
             settings.cloudinary_api_secret,
         )
+
+    if provider == "supabase":
+        if not (settings.supabase_url and settings.supabase_service_role_key):
+            raise RuntimeError(
+                "IMAGE_STORAGE_PROVIDER=supabase but Supabase credentials are not "
+                "configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, or switch "
+                "back to IMAGE_STORAGE_PROVIDER=local for development."
+            )
+        return SupabaseImageStorage(
+            settings.supabase_url,
+            settings.supabase_service_role_key,
+            settings.supabase_storage_bucket,
+        )
+
     return LocalImageStorage(base_dir=Path(settings.upload_dir), base_url=settings.api_base_url)

@@ -20,8 +20,10 @@ different shop 404s exactly like a nonexistent one; the URL's shop slug is
 the only source of truth for which shop's catalog is being read.
 """
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
+
+from app.utils.rate_limit import limiter
 
 from app.database.session import get_db
 from app.models.category import Category
@@ -83,7 +85,9 @@ def _to_detail(product: Product) -> PublicProductDetail:
 
 
 @router.get("/{shop_slug}", response_model=PublicShopResponse)
+@limiter.limit("60/minute")
 def get_shop_catalog(
+    request: Request,
     shop_slug: str,
     db: Session = Depends(get_db),
     anon_session_id: str | None = Header(default=None, alias="X-Anon-Session-Id", max_length=64),
@@ -109,7 +113,9 @@ def get_shop_catalog(
 
 
 @router.get("/{shop_slug}/products", response_model=PublicProductPage)
+@limiter.limit("60/minute")
 def list_shop_products(
+    request: Request,
     shop_slug: str,
     category_id: int | None = Query(default=None),
     availability: str | None = Query(default=None, pattern="^(available|unavailable)$"),
@@ -157,7 +163,9 @@ def list_shop_products(
 
 
 @router.get("/{shop_slug}/products/{product_id}", response_model=PublicProductDetail)
+@limiter.limit("60/minute")
 def get_shop_product(
+    request: Request,
     shop_slug: str,
     product_id: int,
     db: Session = Depends(get_db),

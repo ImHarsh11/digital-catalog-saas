@@ -254,6 +254,13 @@ def seed_products(
 
 
 def seed() -> None:
+    from app.utils.config import get_settings
+
+    if get_settings().environment == "production":
+        print("ERROR: The seed script must NOT be run against a production database.")
+        print("Use 'python -m app.database.create_admin' to create a production admin account.")
+        return
+
     db = SessionLocal()
     try:
         print("Seeding local development data...")

@@ -10,8 +10,9 @@ This is **not** a marketplace: no customer accounts, no shopping cart, no
 online checkout, no multi-branch inventory. One shop = one account = one
 catalog.
 
-> **Status:** Phase 6 (Super Admin QR code generation, Shop Owner pilot
-> analytics dashboard) complete. See [Development Process](#development-process)
+> **Status:** Phase 7 (production readiness, security hardening, deployment
+> configuration) complete — all 7 phases done. See
+> [Development Process](#development-process) and [Deployment](#deployment)
 > below.
 
 ## Architecture
@@ -132,8 +133,12 @@ cd frontend && npm run lint && npm run build
 | `JWT_ALGORITHM` | JWT signing algorithm (default `HS256`) |
 | `JWT_EXPIRE_MINUTES` | Token lifetime in minutes |
 | `CORS_ORIGINS` | Comma-separated list of allowed frontend origins |
-| `IMAGE_STORAGE_PROVIDER` | `local` or `cloudinary` |
+| `IMAGE_STORAGE_PROVIDER` | `local`, `cloudinary`, or `supabase` |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Required when using Cloudinary |
+| `SUPABASE_URL` | Supabase project URL (required when `IMAGE_STORAGE_PROVIDER=supabase`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key (required when `IMAGE_STORAGE_PROVIDER=supabase`) |
+| `SUPABASE_STORAGE_BUCKET` | Supabase Storage bucket name (default `product-images`) |
+| `ENVIRONMENT` | `development` (default) or `production` — controls rate limiting and API docs visibility |
 | `UPLOAD_DIR` | Local disk folder for uploaded product photos (only used when `IMAGE_STORAGE_PROVIDER=local`) |
 | `API_BASE_URL` | Base URL the backend is reachable at — used to build absolute image URLs for local storage |
 | `CATALOG_BASE_URL` | Base URL of the customer-facing catalog frontend (not this API) — used to build the `/shop/{slug}` URL a Super Admin's QR code encodes |
@@ -343,9 +348,98 @@ This project is being built in phases, per the pilot plan:
 4. ✅ Shop Owner dashboard: product CRUD, categories, image uploads, status
 5. ✅ Customer catalog: browsing, product details, search, filters, mobile UI
 6. ✅ Super Admin QR code generation, Shop Owner pilot analytics dashboard
-7. ⬜ Polish: responsive UI, loading/error states, security hardening, docs
+7. ✅ Production readiness, security hardening, deployment configuration
 
 ## Deployment
 
-Deployment documentation will be added once the MVP feature set (Phases 1–7)
-is complete.
+### Production Architecture
+
+```text
+┌──────────────┐     ┌──────────────────┐     ┌───────────────────┐
+│   Vercel     │────▶│    Railway       │────▶│    Supabase       │
+│  (Frontend)  │     │   (Backend)      │     │  (PostgreSQL +    │
+│  React SPA   │     │   FastAPI API    │     │   Storage)        │
+└──────────────┘     └──────────────────┘     └───────────────────┘
+```
+
+### Prerequisites
+
+- [Supabase](https://supabase.com) project (free tier works for pilot)
+- [Railway](https://railway.com) account
+- [Vercel](https://vercel.com) account
+- GitHub repository pushed with all phases
+
+### 1. Supabase Setup
+
+1. Create a new Supabase project.
+2. Note the **Project URL** (`https://xxxx.supabase.co`) and the
+   **service_role key** (Settings → API → Service role secret).
+3. Get the **database connection string** from Settings → Database →
+   Connection string (URI). Use the "Transaction pooler" string with port
+   `6543` and prepend `postgresql+psycopg2://` as the scheme.
+4. Create a **Storage bucket** named `product-images`, set it to **public**
+   (so product images are served without auth).
+5. Apply Alembic migrations from any machine with access:
+   ```bash
+   DATABASE_URL="postgresql+psycopg2://..." alembic upgrade head
+   ```
+6. Create the production Super Admin account:
+   ```bash
+   DATABASE_URL="postgresql+psycopg2://..." \
+     ADMIN_EMAIL=your-real-admin@example.com \
+     ADMIN_PASSWORD=a-strong-password \
+     python -m app.database.create_admin
+   ```
+
+### 2. Railway (Backend)
+
+1. Create a new Railway project, add a service from your GitHub repo.
+2. Set the **Root Directory** to `backend`.
+3. Add these environment variables in Railway:
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | Supabase connection string (see above) |
+   | `JWT_SECRET` | A long random string (`openssl rand -hex 64`) |
+   | `CORS_ORIGINS` | Your Vercel domain, e.g. `https://your-app.vercel.app` |
+   | `IMAGE_STORAGE_PROVIDER` | `supabase` |
+   | `SUPABASE_URL` | `https://xxxx.supabase.co` |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Service role key from Supabase |
+   | `SUPABASE_STORAGE_BUCKET` | `product-images` |
+   | `API_BASE_URL` | Your Railway domain, e.g. `https://your-backend.up.railway.app` |
+   | `CATALOG_BASE_URL` | Your Vercel domain, e.g. `https://your-app.vercel.app` |
+   | `ENVIRONMENT` | `production` |
+
+4. Railway auto-detects the Procfile or `railway.json`; the start command
+   is `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+5. Generate a domain in Railway (Settings → Networking → Generate Domain).
+6. Verify: `https://your-backend.up.railway.app/api/health` should return
+   `{"status": "ok", ...}`.
+
+### 3. Vercel (Frontend)
+
+1. Import the GitHub repo in Vercel.
+2. Set the **Root Directory** to `frontend`.
+3. Add the environment variable:
+
+   | Variable | Value |
+   |---|---|
+   | `VITE_API_URL` | Your Railway backend URL, e.g. `https://your-backend.up.railway.app` |
+
+4. Deploy. The `vercel.json` handles SPA routing (all paths → `index.html`).
+5. Verify: visit `https://your-app.vercel.app` and log in with the
+   production admin credentials you created in step 1.6.
+
+### Post-Deploy Checklist
+
+- [ ] Health check: `GET /api/health` returns 200
+- [ ] Login works with production admin credentials (not dev credentials)
+- [ ] Super Admin dashboard loads at `/super-admin`
+- [ ] Create a shop, create a shop-owner account
+- [ ] Shop owner logs in, adds products with images
+- [ ] Images are stored in Supabase Storage bucket
+- [ ] Customer catalog at `/shop/{slug}` loads correctly
+- [ ] QR code generates and scans correctly on a real device
+- [ ] CORS: browser console shows no cross-origin errors
+- [ ] API docs are NOT accessible at `/docs` in production
+- [ ] Rate limiting: rapid requests to public endpoints return 429
