@@ -160,7 +160,21 @@ export default function ProductDetailPage() {
           </div>
           <p className="mt-1 text-sm text-neutral-500">{product.category.name}</p>
           {product.product_code && <p className="mt-0.5 text-xs text-neutral-400">Code: {product.product_code}</p>}
-          <p className="mt-4 text-2xl font-semibold text-neutral-900">{formatPrice(product.price)}</p>
+          {product.discount_percent ? (
+            <div className="mt-4 flex flex-col gap-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-brand-700">
+                  {formatPrice(product.price * (1 - product.discount_percent / 100))}
+                </span>
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">
+                  {Math.round(product.discount_percent)}% off
+                </span>
+              </div>
+              <span className="text-sm text-neutral-400 line-through">{formatPrice(product.price)}</span>
+            </div>
+          ) : (
+            <p className="mt-4 text-2xl font-semibold text-neutral-900">{formatPrice(product.price)}</p>
+          )}
 
           {product.description && (
             <div className="mt-6 border-t border-neutral-200 pt-5">

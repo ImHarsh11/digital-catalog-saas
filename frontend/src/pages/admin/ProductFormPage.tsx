@@ -28,11 +28,13 @@ interface FormState {
   category_id: string;
   price: string;
   description: string;
+  quantity_available: string;
+  discount_percent: string;
 }
 
 function initialFormState(product: ProductDetail | undefined): FormState {
   if (!product) {
-    return { name: '', product_code: '', category_id: '', price: '', description: '' };
+    return { name: '', product_code: '', category_id: '', price: '', description: '', quantity_available: '1', discount_percent: '' };
   }
   return {
     name: product.name,
@@ -40,6 +42,8 @@ function initialFormState(product: ProductDetail | undefined): FormState {
     category_id: String(product.category.id),
     price: String(product.price),
     description: product.description ?? '',
+    quantity_available: String(product.quantity_available ?? 1),
+    discount_percent: product.discount_percent != null ? String(product.discount_percent) : '',
   };
 }
 
@@ -140,6 +144,8 @@ function ProductFormFields({
         category_id: Number(form.category_id),
         price: Number(form.price),
         description: form.description || undefined,
+        quantity_available: Number(form.quantity_available) || 1,
+        discount_percent: form.discount_percent ? Number(form.discount_percent) : null,
       }),
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['shop-owner', 'products', shopId] });
@@ -160,6 +166,8 @@ function ProductFormFields({
         category_id: Number(form.category_id),
         price: Number(form.price),
         description: form.description || undefined,
+        quantity_available: Number(form.quantity_available) || 1,
+        discount_percent: form.discount_percent ? Number(form.discount_percent) : null,
       });
       if (product && status !== product.status) {
         await setProductStatus(shopId, productId as number, status);
@@ -276,6 +284,37 @@ function ProductFormFields({
               onChange={(e) => update('price', e.target.value)}
               className={`mt-1 ${inputClass}`}
               placeholder="e.g. 4500"
+            />
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-sm font-medium text-neutral-700">
+              Quantity available<span className="text-red-500"> *</span>
+            </span>
+            <input
+              required
+              type="number"
+              min="0"
+              step="1"
+              value={form.quantity_available}
+              onChange={(e) => update('quantity_available', e.target.value)}
+              className={`mt-1 ${inputClass}`}
+              placeholder="e.g. 5"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-neutral-700">Discount (%)</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={form.discount_percent}
+              onChange={(e) => update('discount_percent', e.target.value)}
+              className={`mt-1 ${inputClass}`}
+              placeholder="e.g. 10 for 10% off (optional)"
             />
           </label>
         </div>

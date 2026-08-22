@@ -49,6 +49,8 @@ class PublicProductListItem(BaseModel):
     price: float
     status: ProductStatus
     primary_image_url: str | None
+    quantity_available: int
+    discount_percent: float | None
 
 
 class PublicProductDetail(PublicProductListItem):

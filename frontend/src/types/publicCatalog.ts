@@ -36,6 +36,8 @@ export interface PublicProductListItem {
   price: number;
   status: ProductStatus;
   primary_image_url: string | null;
+  quantity_available: number;
+  discount_percent: number | null;
 }
 
 export interface PublicProductDetail extends PublicProductListItem {

@@ -32,6 +32,8 @@ export interface ProductListItem {
   image_count: number;
   created_by: ProductCreatorBrief | null;
   created_at: string;
+  quantity_available: number;
+  discount_percent: number | null;
 }
 
 export interface ProductDetail extends ProductListItem {
@@ -47,6 +49,8 @@ export interface ProductCreateInput {
   price: number;
   description?: string;
   status?: ProductStatus;
+  quantity_available?: number;
+  discount_percent?: number | null;
 }
 
 export interface ProductUpdateInput {
@@ -55,6 +59,8 @@ export interface ProductUpdateInput {
   category_id?: number;
   price?: number;
   description?: string;
+  quantity_available?: number;
+  discount_percent?: number | null;
 }
 
 export interface ProductImageUploadResponse {
