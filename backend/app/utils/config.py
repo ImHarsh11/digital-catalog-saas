@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     cloudinary_api_key: str = ""
     cloudinary_api_secret: str = ""
 
+    # Where local-storage image files are written to disk, and the base URL
+    # they're served from (mounted as static files in app.main). Only used
+    # when image_storage_provider == "local" -- irrelevant for Cloudinary,
+    # which returns its own absolute URLs.
+    upload_dir: str = "uploads"
+    api_base_url: str = "http://localhost:8000"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

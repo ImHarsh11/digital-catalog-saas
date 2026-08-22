@@ -9,9 +9,19 @@ never see each other's data.
 """
 
 import os
+import shutil
+import tempfile
 from datetime import date, timedelta
 
 import pytest
+
+# Product-image uploads (Phase 4) must never land in the real dev
+# `backend/uploads/` directory -- point local storage at an isolated temp
+# dir. Must happen before `app.main` is imported, since main.py reads
+# get_settings().upload_dir at import time to mount the static dir.
+_TEST_UPLOAD_DIR = tempfile.mkdtemp(prefix="digital_catalog_test_uploads_")
+os.environ["UPLOAD_DIR"] = _TEST_UPLOAD_DIR
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
@@ -37,6 +47,7 @@ def _test_schema():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+    shutil.rmtree(_TEST_UPLOAD_DIR, ignore_errors=True)
 
 
 @pytest.fixture()
@@ -188,3 +199,35 @@ def inactive_owner(db_session, shop_b) -> User:
     db_session.add(user)
     db_session.flush()
     return user
+
+
+@pytest.fixture()
+def category_a(db_session, shop_a):
+    from app.models.category import Category
+
+    category = Category(shop_id=shop_a.id, name="Silk Sarees", display_order=0, is_active=True)
+    db_session.add(category)
+    db_session.flush()
+    return category
+
+
+@pytest.fixture()
+def category_b(db_session, shop_b):
+    from app.models.category import Category
+
+    category = Category(shop_id=shop_b.id, name="Cotton Sarees", display_order=0, is_active=True)
+    db_session.add(category)
+    db_session.flush()
+    return category
+
+
+def tiny_jpeg_bytes() -> bytes:
+    """A minimal but genuinely valid 1x1 JPEG, for exercising real image
+    upload/validation without shipping a binary fixture file."""
+    import io
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (1, 1), color=(200, 30, 30)).save(buffer, format="JPEG")
+    return buffer.getvalue()

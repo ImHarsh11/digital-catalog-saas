@@ -4,9 +4,14 @@ import { homeRouteForRole } from '@/utils/roleRouting';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Spinner from '@/components/Spinner';
 import SuperAdminLayout from '@/layouts/SuperAdminLayout';
+import ShopOwnerLayout from '@/layouts/ShopOwnerLayout';
 import LoginPage from '@/pages/LoginPage';
 import NotFoundPage from '@/pages/NotFoundPage';
-import ShopOwnerHomePage from '@/pages/admin/ShopOwnerHomePage';
+import ShopOwnerDashboardPage from '@/pages/admin/DashboardPage';
+import ProductsPage from '@/pages/admin/ProductsPage';
+import ProductFormPage from '@/pages/admin/ProductFormPage';
+import CategoriesPage from '@/pages/admin/CategoriesPage';
+import SettingsPage from '@/pages/admin/SettingsPage';
 import DashboardPage from '@/pages/super-admin/DashboardPage';
 import ShopDetailPage from '@/pages/super-admin/ShopDetailPage';
 import ShopsPage from '@/pages/super-admin/ShopsPage';
@@ -44,7 +49,14 @@ export default function AppRoutes() {
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['SHOP_OWNER']} />}>
-        <Route path="/admin" element={<ShopOwnerHomePage />} />
+        <Route element={<ShopOwnerLayout />}>
+          <Route path="/admin" element={<ShopOwnerDashboardPage />} />
+          <Route path="/admin/products" element={<ProductsPage />} />
+          <Route path="/admin/products/new" element={<ProductFormPage />} />
+          <Route path="/admin/products/:id/edit" element={<ProductFormPage />} />
+          <Route path="/admin/categories" element={<CategoriesPage />} />
+          <Route path="/admin/settings" element={<SettingsPage />} />
+        </Route>
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

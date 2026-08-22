@@ -17,6 +17,7 @@ backend/*.egg-info/
 backend/.env
 backend/.pytest_cache/
 backend/.coverage
+backend/uploads/
 
 # --- Editors ---
 .vscode/

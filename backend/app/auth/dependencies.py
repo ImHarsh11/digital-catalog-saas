@@ -100,3 +100,17 @@ def verify_shop_ownership(current_user: User, resource_shop_id: int) -> None:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Resource not found.",
         )
+
+
+def require_shop_access(shop_id: int, current_user: User = Depends(get_current_user)) -> User:
+    """Router-level dependency for every `/api/shops/{shop_id}/...` endpoint
+    (categories, products, images, dashboard, profile -- Phase 4).
+
+    FastAPI resolves `shop_id` from the path for a dependency the same way
+    it does for an endpoint, so this can sit in an APIRouter's
+    `dependencies=[...]` once instead of being repeated on every route.
+    Delegates entirely to `verify_shop_ownership`: a shop owner only ever
+    passes for their own shop_id, a super admin always passes.
+    """
+    verify_shop_ownership(current_user, shop_id)
+    return current_user

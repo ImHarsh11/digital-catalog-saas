@@ -10,8 +10,8 @@ This is **not** a marketplace: no customer accounts, no shopping cart, no
 online checkout, no multi-branch inventory. One shop = one account = one
 catalog.
 
-> **Status:** Phase 3 (Super Admin: shop CRUD, shop-owner creation, 14-day
-> trial, dashboard stats) complete. See
+> **Status:** Phase 4 (Shop Owner: product & category management, image
+> uploads, status changes) complete. See
 > [Development Process](#development-process) below.
 
 ## Architecture
@@ -134,6 +134,8 @@ cd frontend && npm run lint && npm run build
 | `CORS_ORIGINS` | Comma-separated list of allowed frontend origins |
 | `IMAGE_STORAGE_PROVIDER` | `local` or `cloudinary` |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Required when using Cloudinary |
+| `UPLOAD_DIR` | Local disk folder for uploaded product photos (only used when `IMAGE_STORAGE_PROVIDER=local`) |
+| `API_BASE_URL` | Base URL the backend is reachable at — used to build absolute image URLs for local storage |
 
 ### Frontend (`frontend/.env`)
 
@@ -164,12 +166,15 @@ Demo shop catalog: `/shop/demo-sarees`
   deactivated account loses access immediately rather than after the token
   expires.
 - `require_role(...)` and `get_current_shop_owner` (in
-  `app/auth/dependencies.py`) are the reusable dependencies Phase 3/4
-  endpoints will use to enforce SUPER_ADMIN vs SHOP_OWNER access.
-- `verify_shop_ownership(user, shop_id)` is the helper that will guard every
-  shop-scoped endpoint so a shop owner can never read or modify another
-  shop's data by guessing an id — it 404s (not 403) on mismatch, so it
-  doesn't even confirm the resource exists.
+  `app/auth/dependencies.py`) are the reusable dependencies Super Admin and
+  Shop Owner endpoints use to enforce SUPER_ADMIN vs SHOP_OWNER access.
+- `verify_shop_ownership(user, shop_id)` guards every shop-scoped endpoint so
+  a shop owner can never read or modify another shop's data by guessing an
+  id — it 404s (not 403) on mismatch, so it doesn't even confirm the
+  resource exists. `require_shop_access` (also in `dependencies.py`) wraps
+  it as a router-level dependency for every `/api/shops/{shop_id}/...`
+  route (categories, products, images, dashboard, profile) — a super admin
+  passes for any shop, a shop owner only for their own.
 
 ## Super Admin API
 
@@ -196,6 +201,62 @@ The Super Admin frontend (`/super-admin`, `/super-admin/shops`,
 the above: dashboard stat cards, a shop table with create/activate/deactivate
 actions, and a shop detail page with an edit dialog and activity feed.
 
+## Shop Owner API
+
+All routes below are mounted at `/api/shops/{shop_id}/...` and require
+either that shop's SHOP_OWNER or any SUPER_ADMIN (enforced by
+`require_shop_access` on every route — see Authentication & Authorization
+above). `shop_id` always comes from the URL path; it is never trusted from
+a request body.
+
+- `GET /dashboard` — product totals (available/sold/out of stock/added this
+  week) plus the shop's own trial status, in one request.
+- `GET /profile`, `PUT /profile` — the shop's own contact/profile fields.
+  Reuses the same `ShopUpdate` schema and `update_shop` service function as
+  the Super Admin's shop edit — slug is not editable here either.
+- `GET/POST /categories`, `PUT/DELETE /categories/{id}` — category CRUD.
+  Category names are unique per shop (not globally). Deleting a category
+  that still has products attached is rejected with `409` (the DB's
+  `ON DELETE RESTRICT` on `products.category_id` is never bypassed) and a
+  message stating exactly how many products need to be moved first.
+- `GET/POST /products`, `GET/PUT/DELETE /products/{id}` — product CRUD.
+  `GET /products` supports `?category_id=`, `?status=`, and `?search=`
+  (matches name or product code). Product codes are optional but, when set,
+  must be unique within the shop — not globally, so two different shops can
+  both use `"BS1001"`. Every product records `created_by`, surfaced in
+  responses as `created_by.role` (`SHOP_OWNER` vs `SUPER_ADMIN`) so the
+  paid catalog-management service can eventually be billed per product.
+- `PATCH /products/{id}/status` — `AVAILABLE` / `SOLD` / `OUT_OF_STOCK`.
+  Each transition logs its own `catalog_activity` action; setting the same
+  status again is a no-op (no duplicate activity entry).
+- `POST /products/{id}/images` — multipart image upload (JPEG/PNG/WebP,
+  5MB max, validated by both content-type and by actually decoding the
+  image with Pillow). The first image uploaded becomes the product's
+  primary image automatically.
+- `DELETE /products/{id}/images/{image_id}` — deletes the image row and the
+  underlying file; if it was the primary image, the next remaining image
+  (by upload order) is promoted automatically, or primary becomes `null`
+  if none remain.
+- `PATCH /products/{id}/images/{image_id}/primary` — explicitly choose the
+  primary image.
+
+Image storage is abstracted behind `ImageStorage`
+(`app/services/storage.py`): `LocalImageStorage` writes to `UPLOAD_DIR` and
+is served back out via a `/uploads` static mount, used for local dev and
+tests; `CloudinaryImageStorage` is implemented against the same interface
+so switching `IMAGE_STORAGE_PROVIDER=cloudinary` in production is a config
+change, not a code change. Storage deletes always happen *after* the
+database transaction that removes the row has committed, never before.
+
+The Shop Owner frontend (`/admin`, `/admin/products`, `/admin/products/new`,
+`/admin/products/:id/edit`, `/admin/categories`, `/admin/settings`) covers
+all of the above: a dashboard, a searchable/filterable product grid with
+inline mark-sold/available and delete, a deliberately minimal product
+form (core fields first, photos right after saving) with drag-free
+tap-to-upload, per-photo delete and primary selection with upload progress
+bars, category management, and a settings page for the shop's own profile
+and catalog link.
+
 ## Development Process
 
 This project is being built in phases, per the pilot plan:
@@ -203,7 +264,7 @@ This project is being built in phases, per the pilot plan:
 1. ✅ Repository, frontend/backend scaffolds, PostgreSQL, env config, health check
 2. ✅ Database models, Alembic migrations, seed data, authentication, RBAC
 3. ✅ Super Admin: shop creation, shop owner creation, 14-day trial
-4. ⬜ Shop Owner dashboard: product CRUD, categories, image uploads, status
+4. ✅ Shop Owner dashboard: product CRUD, categories, image uploads, status
 5. ⬜ Customer catalog: browsing, product details, search, filters, mobile UI
 6. ⬜ QR code generation, analytics, activity tracking
 7. ⬜ Polish: responsive UI, loading/error states, security hardening, docs
