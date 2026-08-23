@@ -38,7 +38,7 @@ import { getApiErrorMessage } from '@/utils/apiError';
 import ErrorState from '@/components/ErrorState';
 import Spinner from '@/components/Spinner';
 import type { PeriodKPI, RichAnalytics, TimeSeriesSale, TimeSeriesVisit } from '@/types/dashboard';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,6 +59,27 @@ const PERIOD_LABELS: Record<Period, string> = {
   '3m': 'prev 3 months',
   '1y': 'prev year',
 };
+
+// ─── Dark-mode hook ───────────────────────────────────────────────────────────
+
+/**
+ * Returns true when the <html> element carries the `dark` class.
+ * Updates reactively whenever the class changes (theme toggle or system change).
+ */
+function useDark(): boolean {
+  const [dark, setDark] = useState(() =>
+    document.documentElement.classList.contains('dark')
+  );
+  useEffect(() => {
+    const el = document.documentElement;
+    const obs = new MutationObserver(() => {
+      setDark(el.classList.contains('dark'));
+    });
+    obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+  return dark;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -89,7 +110,16 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function DeltaChip({ kpi }: { kpi: PeriodKPI }) {
-  const { change } = kpi;
+  const { change, previous, current } = kpi;
+
+  // No prior period data → show "New" instead of a meaningless percentage
+  if (previous === 0 && current > 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-neutral-100 px-1.5 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+        New
+      </span>
+    );
+  }
   if (change === 0) {
     return (
       <span className="inline-flex items-center gap-0.5 text-xs text-neutral-400">
@@ -170,6 +200,12 @@ function ChartTooltipContent({
 }
 
 function VisitsChart({ series, period }: { series: TimeSeriesVisit[]; period: Period }) {
+  const dark = useDark();
+  // Monochrome palette that stays legible in both themes
+  const line = dark ? '#f5f5f5' : '#171717';      // neutral-100 / neutral-900
+  const grid = dark ? '#404040' : '#e5e7eb';      // neutral-700 / neutral-200
+  const tick = dark ? '#737373' : '#9ca3af';      // neutral-500 / neutral-400
+
   const data = series.map((s) => ({
     bucket: fmtBucket(s.bucket, period),
     visits: s.visits,
@@ -189,20 +225,20 @@ function VisitsChart({ series, period }: { series: TimeSeriesVisit[]; period: Pe
       <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id="visitsGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#171717" stopOpacity={0.12} />
-            <stop offset="95%" stopColor="#171717" stopOpacity={0} />
+            <stop offset="5%" stopColor={line} stopOpacity={0.12} />
+            <stop offset="95%" stopColor={line} stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.6} />
+        <CartesianGrid strokeDasharray="3 3" stroke={grid} strokeOpacity={0.6} />
         <XAxis
           dataKey="bucket"
-          tick={{ fontSize: 10, fill: '#9ca3af' }}
+          tick={{ fontSize: 10, fill: tick }}
           axisLine={false}
           tickLine={false}
           interval="preserveStartEnd"
         />
         <YAxis
-          tick={{ fontSize: 10, fill: '#9ca3af' }}
+          tick={{ fontSize: 10, fill: tick }}
           axisLine={false}
           tickLine={false}
           width={36}
@@ -212,11 +248,11 @@ function VisitsChart({ series, period }: { series: TimeSeriesVisit[]; period: Pe
         <Area
           type="monotone"
           dataKey="visits"
-          stroke="#171717"
+          stroke={line}
           strokeWidth={1.5}
           fill="url(#visitsGrad)"
           dot={false}
-          activeDot={{ r: 3, fill: '#171717' }}
+          activeDot={{ r: 3, fill: line }}
         />
       </AreaChart>
     </ResponsiveContainer>
@@ -224,6 +260,11 @@ function VisitsChart({ series, period }: { series: TimeSeriesVisit[]; period: Pe
 }
 
 function SalesChart({ series, period }: { series: TimeSeriesSale[]; period: Period }) {
+  const dark = useDark();
+  const bar  = dark ? '#f5f5f5' : '#171717';
+  const grid = dark ? '#404040' : '#e5e7eb';
+  const tick = dark ? '#737373' : '#9ca3af';
+
   const data = series.map((s) => ({
     bucket: fmtBucket(s.bucket, period),
     sold: s.sold,
@@ -240,23 +281,23 @@ function SalesChart({ series, period }: { series: TimeSeriesSale[]; period: Peri
   return (
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.6} vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={grid} strokeOpacity={0.6} vertical={false} />
         <XAxis
           dataKey="bucket"
-          tick={{ fontSize: 10, fill: '#9ca3af' }}
+          tick={{ fontSize: 10, fill: tick }}
           axisLine={false}
           tickLine={false}
           interval="preserveStartEnd"
         />
         <YAxis
-          tick={{ fontSize: 10, fill: '#9ca3af' }}
+          tick={{ fontSize: 10, fill: tick }}
           axisLine={false}
           tickLine={false}
           width={36}
           allowDecimals={false}
         />
         <Tooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="sold" fill="#171717" radius={[2, 2, 0, 0]} maxBarSize={32} />
+        <Bar dataKey="sold" fill={bar} radius={[2, 2, 0, 0]} maxBarSize={32} />
       </BarChart>
     </ResponsiveContainer>
   );
