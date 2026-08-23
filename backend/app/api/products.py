@@ -51,6 +51,8 @@ def _to_list_item(product: Product) -> ProductListItem:
         image_count=len(product.images),
         created_by=_creator_brief(product),
         created_at=product.created_at,
+        quantity_available=product.quantity_available,
+        discount_percent=float(product.discount_percent) if product.discount_percent is not None else None,
     )
 
 

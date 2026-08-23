@@ -69,6 +69,8 @@ def _to_list_item(product: Product) -> PublicProductListItem:
         price=float(product.price),
         status=product.status,
         primary_image_url=product.primary_image_url,
+        quantity_available=product.quantity_available,
+        discount_percent=float(product.discount_percent) if product.discount_percent is not None else None,
     )
 
 
