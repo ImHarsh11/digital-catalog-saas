@@ -7,13 +7,13 @@ on their own shop (Super Admin already has equivalent access via
 /api/super-admin/shops/{id}).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_shop_access
 from app.database.session import get_db
 from app.models.user import User
-from app.schemas.analytics import ShopAnalytics
+from app.schemas.analytics import RichAnalytics, ShopAnalytics
 from app.schemas.dashboard import ShopOwnerDashboardStats
 from app.schemas.shop import ShopDetail, ShopOwnerBrief, ShopUpdate
 from app.services import analytics as analytics_service
@@ -98,6 +98,18 @@ def get_analytics(
 ) -> ShopAnalytics:
     _get_shop_or_404(db, shop_id)
     return ShopAnalytics(**analytics_service.get_shop_analytics(db, shop_id))
+
+
+@router.get("/analytics/rich", response_model=RichAnalytics)
+def get_rich_analytics(
+    shop_id: int,
+    period: str = Query(default="7d", pattern="^(today|7d|30d|3m|1y)$"),
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_shop_access),
+) -> RichAnalytics:
+    """Rich period-based analytics with time-series, comparisons, and breakdowns."""
+    _get_shop_or_404(db, shop_id)
+    return RichAnalytics(**analytics_service.get_rich_analytics(db, shop_id, period))
 
 
 @router.put("/profile", response_model=ShopDetail)
