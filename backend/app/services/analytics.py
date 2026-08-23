@@ -10,9 +10,10 @@ existing /analytics endpoint. The new `get_rich_analytics` backs /analytics/rich
 """
 
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import distinct as sa_distinct
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from app.models.catalog_activity import CatalogActivity
@@ -24,6 +25,13 @@ from app.models.product import Product
 TOP_N = 5
 TOP_N_RICH = 10
 MIN_SEARCH_LEN = 3  # Filter out single-char / 2-char partial keystrokes
+
+# All analytics period boundaries and chart buckets are expressed in the
+# business timezone. DB timestamps stay TIMESTAMPTZ (UTC-stored); we
+# convert boundaries to UTC for comparison and use AT TIME ZONE in
+# date_trunc so chart buckets align to IST calendar days/hours/months.
+BUSINESS_TZ = ZoneInfo("Asia/Kolkata")
+BUSINESS_TZ_PG = "Asia/Kolkata"  # PostgreSQL timezone name for AT TIME ZONE
 
 
 # ─── Legacy analytics (unchanged) ────────────────────────────────────────────
@@ -113,35 +121,46 @@ def get_shop_analytics(db: Session, shop_id: int) -> dict:
 
 
 def _period_bounds(period: str) -> tuple[datetime, datetime, datetime, datetime]:
-    """Return (current_start, current_end, prev_start, prev_end) in UTC.
+    """Return (current_start, current_end, prev_start, prev_end) as UTC-aware
+    datetimes whose boundaries align to the BUSINESS_TZ calendar.
 
-    Each period is compared against an equal-length window immediately before it
-    so percentage changes are apple-to-apple comparisons.
+    "today" means 00:00 IST today → now.
+    "7d" / "30d" are rolling windows from midnight-IST N days ago → now.
+    "3m" / "1y" similarly use IST midnight boundaries.
+
+    Each period is compared against an equal-length window immediately before
+    ``current_start`` so percentage changes are apple-to-apple comparisons.
+    All returned datetimes are timezone-aware (UTC) for safe comparison against
+    PostgreSQL TIMESTAMPTZ columns.
     """
-    now = datetime.now(timezone.utc)
+    now_ist = datetime.now(BUSINESS_TZ)
+    now_utc = now_ist.astimezone(timezone.utc)
+    # Midnight IST today, expressed as a UTC-aware datetime
+    midnight_ist_today = now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
+
     if period == "today":
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end = now
+        start = midnight_ist_today.astimezone(timezone.utc)
+        end = now_utc
         delta = timedelta(days=1)
     elif period == "7d":
-        start = now - timedelta(days=7)
-        end = now
+        start = (midnight_ist_today - timedelta(days=6)).astimezone(timezone.utc)
+        end = now_utc
         delta = timedelta(days=7)
     elif period == "30d":
-        start = now - timedelta(days=30)
-        end = now
+        start = (midnight_ist_today - timedelta(days=29)).astimezone(timezone.utc)
+        end = now_utc
         delta = timedelta(days=30)
     elif period == "3m":
-        start = now - timedelta(days=91)
-        end = now
+        start = (midnight_ist_today - timedelta(days=90)).astimezone(timezone.utc)
+        end = now_utc
         delta = timedelta(days=91)
     elif period == "1y":
-        start = now - timedelta(days=365)
-        end = now
+        start = (midnight_ist_today - timedelta(days=364)).astimezone(timezone.utc)
+        end = now_utc
         delta = timedelta(days=365)
     else:
-        start = now - timedelta(days=7)
-        end = now
+        start = (midnight_ist_today - timedelta(days=6)).astimezone(timezone.utc)
+        end = now_utc
         delta = timedelta(days=7)
     return start, end, start - delta, start
 
@@ -210,7 +229,12 @@ def _count_sales(db: Session, shop_id: int, start: datetime, end: datetime) -> i
 
 def _visits_series(db: Session, shop_id: int, period: str, start: datetime, end: datetime) -> list[dict]:
     unit = _trunc_unit(period)
-    bucket_col = func.date_trunc(unit, CustomerEvent.created_at).label("bucket")
+    # Truncate in IST so hourly/daily/weekly/monthly buckets align to the
+    # business calendar, then convert back to TIMESTAMPTZ for consistent output.
+    bucket_col = func.date_trunc(
+        unit,
+        func.timezone(BUSINESS_TZ_PG, CustomerEvent.created_at),
+    ).label("bucket")
     rows = (
         db.query(
             bucket_col,
@@ -239,7 +263,10 @@ def _visits_series(db: Session, shop_id: int, period: str, start: datetime, end:
 
 def _sales_series(db: Session, shop_id: int, period: str, start: datetime, end: datetime) -> list[dict]:
     unit = _trunc_unit(period)
-    bucket_col = func.date_trunc(unit, CatalogActivity.created_at).label("bucket")
+    bucket_col = func.date_trunc(
+        unit,
+        func.timezone(BUSINESS_TZ_PG, CatalogActivity.created_at),
+    ).label("bucket")
     rows = (
         db.query(bucket_col, func.count(CatalogActivity.id).label("sold"))
         .filter(
