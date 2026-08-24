@@ -119,6 +119,8 @@ def create_product(db: Session, shop_id: int, payload: ProductCreate, actor: Use
         status=payload.status,
         quantity_available=payload.quantity_available,
         discount_percent=payload.discount_percent,
+        color=payload.color,
+        brand=payload.brand,
         created_by=actor.id,
     )
     db.add(product)

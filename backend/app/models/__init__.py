@@ -7,6 +7,7 @@ and `Base.metadata.create_all()` (used in tests) rely on.
 
 from app.models.catalog_activity import CatalogActivity
 from app.models.category import Category
+from app.models.customer_contact import CustomerContact
 from app.models.customer_event import CustomerEvent
 from app.models.enums import (
     CatalogAction,
@@ -17,6 +18,7 @@ from app.models.enums import (
 )
 from app.models.product import Product
 from app.models.product_image import ProductImage
+from app.models.product_like import ProductLike
 from app.models.shop import Shop
 from app.models.user import User
 
@@ -24,10 +26,12 @@ __all__ = [
     "CatalogAction",
     "CatalogActivity",
     "Category",
+    "CustomerContact",
     "CustomerEvent",
     "CustomerEventType",
     "Product",
     "ProductImage",
+    "ProductLike",
     "ProductStatus",
     "Shop",
     "SubscriptionStatus",

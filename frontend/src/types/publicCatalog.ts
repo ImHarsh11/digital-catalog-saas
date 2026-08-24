@@ -38,6 +38,8 @@ export interface PublicProductListItem {
   primary_image_url: string | null;
   quantity_available: number;
   discount_percent: number | null;
+  color: string | null;
+  brand: string | null;
 }
 
 export interface PublicProductDetail extends PublicProductListItem {
@@ -51,4 +53,24 @@ export interface PublicProductPage {
   page: number;
   page_size: number;
   has_more: boolean;
+  suggestions: PublicProductListItem[] | null;
+}
+
+export interface CustomerContactInput {
+  name?: string;
+  whatsapp?: string;
+  email?: string;
+}
+
+export interface CustomerContactResponse {
+  id: number;
+  name: string | null;
+  whatsapp: string | null;
+  email: string | null;
+}
+
+export interface ProductLikeResponse {
+  product_id: number;
+  liked: boolean;
+  like_count: number;
 }

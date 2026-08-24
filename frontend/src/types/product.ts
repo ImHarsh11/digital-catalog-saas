@@ -34,6 +34,8 @@ export interface ProductListItem {
   created_at: string;
   quantity_available: number;
   discount_percent: number | null;
+  color: string | null;
+  brand: string | null;
 }
 
 export interface ProductDetail extends ProductListItem {
@@ -51,6 +53,8 @@ export interface ProductCreateInput {
   status?: ProductStatus;
   quantity_available?: number;
   discount_percent?: number | null;
+  color?: string | null;
+  brand?: string | null;
 }
 
 export interface ProductUpdateInput {
@@ -61,6 +65,8 @@ export interface ProductUpdateInput {
   description?: string;
   quantity_available?: number;
   discount_percent?: number | null;
+  color?: string | null;
+  brand?: string | null;
 }
 
 export interface ProductImageUploadResponse {

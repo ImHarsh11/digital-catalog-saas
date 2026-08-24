@@ -40,6 +40,8 @@ class ProductCreate(BaseModel):
     status: ProductStatus = ProductStatus.AVAILABLE
     quantity_available: int = Field(default=1, ge=0)
     discount_percent: float | None = Field(default=None, ge=0, le=100)
+    color: str | None = Field(default=None, max_length=100)
+    brand: str | None = Field(default=None, max_length=255)
 
     @field_validator("product_code")
     @classmethod
@@ -63,6 +65,8 @@ class ProductUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=4000)
     quantity_available: int | None = Field(default=None, ge=0)
     discount_percent: float | None = Field(default=None, ge=0, le=100)
+    color: str | None = Field(default=None, max_length=100)
+    brand: str | None = Field(default=None, max_length=255)
 
     @field_validator("product_code")
     @classmethod
@@ -91,6 +95,8 @@ class ProductListItem(BaseModel):
     created_at: datetime
     quantity_available: int
     discount_percent: float | None
+    color: str | None
+    brand: str | None
 
 
 class ProductDetail(ProductListItem):

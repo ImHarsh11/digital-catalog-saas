@@ -91,6 +91,10 @@ def list_products(
     sort: str = "newest",
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
+    color: str | None = None,
+    brand: str | None = None,
+    price_min: float | None = None,
+    price_max: float | None = None,
 ) -> ProductPage:
     """`availability` groups the 3 statuses the way a customer thinks about
     them, not the way the shop-owner dashboard filters them: "available"
@@ -111,7 +115,23 @@ def list_products(
         query = query.filter(Product.status.in_([ProductStatus.SOLD, ProductStatus.OUT_OF_STOCK]))
     if search:
         pattern = f"%{search.strip()}%"
-        query = query.filter(or_(Product.name.ilike(pattern), Product.product_code.ilike(pattern)))
+        query = query.filter(
+            or_(
+                Product.name.ilike(pattern),
+                Product.product_code.ilike(pattern),
+                Product.color.ilike(pattern),
+                Product.brand.ilike(pattern),
+                Product.description.ilike(pattern),
+            )
+        )
+    if color:
+        query = query.filter(Product.color.ilike(f"%{color.strip()}%"))
+    if brand:
+        query = query.filter(Product.brand.ilike(f"%{brand.strip()}%"))
+    if price_min is not None:
+        query = query.filter(Product.price >= price_min)
+    if price_max is not None:
+        query = query.filter(Product.price <= price_max)
 
     total = query.count()
 
@@ -125,6 +145,91 @@ def list_products(
         .all()
     )
     return ProductPage(items=items, total=total)
+
+
+def get_suggestions(
+    db: Session,
+    shop_id: int,
+    *,
+    category_id: int | None = None,
+    brand: str | None = None,
+    color: str | None = None,
+    price_ref: float | None = None,
+    limit: int = 8,
+) -> list[Product]:
+    """Return a handful of available products as suggestions when a search
+    yields no results.
+
+    Prioritisation strategy (best effort, falls back gracefully):
+      1. Same category first (if the customer was browsing one).
+      2. Same brand / same color next.
+      3. Close price range (±50 % of the reference price).
+      4. Fill any remaining slots with newest available stock.
+
+    Results are de-duplicated; the final list never exceeds *limit*.
+    """
+    seen_ids: set[int] = set()
+    results: list[Product] = []
+
+    def _add(products: list[Product]) -> None:
+        for p in products:
+            if p.id not in seen_ids and len(results) < limit:
+                seen_ids.add(p.id)
+                results.append(p)
+
+    base = (
+        db.query(Product)
+        .options(joinedload(Product.category), joinedload(Product.images))
+        .filter(Product.shop_id == shop_id, Product.status == ProductStatus.AVAILABLE)
+    )
+
+    # 1. Same category
+    if category_id is not None:
+        _add(
+            base.filter(Product.category_id == category_id)
+            .order_by(Product.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    # 2. Same brand
+    if brand and len(results) < limit:
+        _add(
+            base.filter(Product.brand.ilike(f"%{brand.strip()}%"))
+            .order_by(Product.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    # 3. Same color
+    if color and len(results) < limit:
+        _add(
+            base.filter(Product.color.ilike(f"%{color.strip()}%"))
+            .order_by(Product.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    # 4. Similar price (±50 %)
+    if price_ref is not None and price_ref > 0 and len(results) < limit:
+        lo = price_ref * 0.5
+        hi = price_ref * 1.5
+        _add(
+            base.filter(Product.price.between(lo, hi))
+            .order_by(Product.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    # 5. Fill remaining with newest available
+    if len(results) < limit:
+        _add(
+            base.order_by(Product.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    return results
 
 
 def get_product(db: Session, shop_id: int, product_id: int) -> Product | None:

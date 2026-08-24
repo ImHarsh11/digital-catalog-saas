@@ -30,11 +30,13 @@ interface FormState {
   description: string;
   quantity_available: string;
   discount_percent: string;
+  color: string;
+  brand: string;
 }
 
 function initialFormState(product: ProductDetail | undefined): FormState {
   if (!product) {
-    return { name: '', product_code: '', category_id: '', price: '', description: '', quantity_available: '1', discount_percent: '' };
+    return { name: '', product_code: '', category_id: '', price: '', description: '', quantity_available: '1', discount_percent: '', color: '', brand: '' };
   }
   return {
     name: product.name,
@@ -44,6 +46,8 @@ function initialFormState(product: ProductDetail | undefined): FormState {
     description: product.description ?? '',
     quantity_available: String(product.quantity_available ?? 1),
     discount_percent: product.discount_percent != null ? String(product.discount_percent) : '',
+    color: product.color ?? '',
+    brand: product.brand ?? '',
   };
 }
 
@@ -146,6 +150,8 @@ function ProductFormFields({
         description: form.description || undefined,
         quantity_available: Number(form.quantity_available) || 1,
         discount_percent: form.discount_percent ? Number(form.discount_percent) : null,
+        color: form.color || undefined,
+        brand: form.brand || undefined,
       }),
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['shop-owner', 'products', shopId] });
@@ -168,6 +174,8 @@ function ProductFormFields({
         description: form.description || undefined,
         quantity_available: Number(form.quantity_available) || 1,
         discount_percent: form.discount_percent ? Number(form.discount_percent) : null,
+        color: form.color || undefined,
+        brand: form.brand || undefined,
       });
       if (product && status !== product.status) {
         await setProductStatus(shopId, productId as number, status);
@@ -329,6 +337,29 @@ function ProductFormFields({
             placeholder="Optional -- your own stock number, if you use one"
           />
         </label>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-sm font-medium text-neutral-700">Color</span>
+            <input
+              type="text"
+              value={form.color}
+              onChange={(e) => update('color', e.target.value)}
+              className={`mt-1 ${inputClass}`}
+              placeholder="e.g. Red, Blue, Maroon (optional)"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-neutral-700">Brand</span>
+            <input
+              type="text"
+              value={form.brand}
+              onChange={(e) => update('brand', e.target.value)}
+              className={`mt-1 ${inputClass}`}
+              placeholder="e.g. Kanchipuram, Banarasi (optional)"
+            />
+          </label>
+        </div>
 
         <label className="block">
           <span className="text-sm font-medium text-neutral-700">Description</span>

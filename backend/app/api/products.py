@@ -53,6 +53,8 @@ def _to_list_item(product: Product) -> ProductListItem:
         created_at=product.created_at,
         quantity_available=product.quantity_available,
         discount_percent=float(product.discount_percent) if product.discount_percent is not None else None,
+        color=product.color,
+        brand=product.brand,
     )
 
 

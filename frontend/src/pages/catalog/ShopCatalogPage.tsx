@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { Package, Phone, Search, Sparkles } from 'lucide-react';
-import { getShopCatalog, listShopProducts, type SortOption } from '@/services/publicCatalog';
+import { Filter, Heart, Package, Phone, Search, Sparkles, X } from 'lucide-react';
+import {
+  getShopCatalog,
+  listShopProducts,
+  submitCustomerContact,
+  toggleProductLike,
+  type SortOption,
+} from '@/services/publicCatalog';
 import { formatPrice } from '@/utils/currency';
 import ProductImage from '@/components/catalog/ProductImage';
 import Spinner from '@/components/Spinner';
@@ -165,45 +171,160 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Product card ─────────────────────────────────────────────────────────────
 
-function ProductCard({ product, slug }: { product: PublicProductListItem; slug: string }) {
+function ProductCard({
+  product,
+  slug,
+  onLike,
+  liked,
+  onProductClick,
+}: {
+  product: PublicProductListItem;
+  slug: string;
+  onLike?: (productId: number) => void;
+  liked?: boolean;
+  onProductClick?: () => void;
+}) {
   const unavailable = product.status !== 'AVAILABLE';
 
   return (
-    <Link
-      to={`/shop/${slug}/product/${product.id}`}
-      className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+    <div
+      className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
       style={{ border: '1px solid rgba(139,26,26,0.08)' }}
     >
-      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-t-2xl bg-neutral-100">
-        <ProductImage
-          src={product.primary_image_url}
-          alt={product.name}
-          className={`h-full w-full transition-transform duration-500 group-hover:scale-105 ${unavailable ? 'opacity-70 grayscale-[30%]' : ''}`}
-        />
-        <StatusBadge status={product.status} />
+      {/* Like button */}
+      {onLike && (
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike(product.id); }}
+          className="absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm backdrop-blur-sm transition-all hover:scale-110"
+        >
+          <Heart className={`h-4 w-4 transition-colors ${liked ? 'fill-red-500 text-red-500' : 'text-neutral-500'}`} />
+        </button>
+      )}
+      <Link
+        to={`/shop/${slug}/product/${product.id}`}
+        className="flex flex-1 flex-col"
+        onClick={onProductClick}
+      >
+        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-t-2xl bg-neutral-100">
+          <ProductImage
+            src={product.primary_image_url}
+            alt={product.name}
+            className={`h-full w-full transition-transform duration-500 group-hover:scale-105 ${unavailable ? 'opacity-70 grayscale-[30%]' : ''}`}
+          />
+          <StatusBadge status={product.status} />
 
-        {product.discount_percent ? (
-          <div className="absolute right-2 top-2 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-bold text-white shadow">
-            -{Math.round(product.discount_percent)}%
-          </div>
-        ) : null}
-      </div>
-
-      <div className="flex flex-1 flex-col p-3">
-        <p className="line-clamp-2 text-sm font-medium leading-snug text-neutral-800">
-          {product.name}
-        </p>
-        <p className="mt-0.5 text-xs text-neutral-400">{product.category.name}</p>
-        <div className="mt-auto pt-2">
-          <PriceDisplay price={product.price} discountPercent={product.discount_percent} />
+          {product.discount_percent ? (
+            <div className="absolute right-2 top-2 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-bold text-white shadow">
+              -{Math.round(product.discount_percent)}%
+            </div>
+          ) : null}
         </div>
-        {product.quantity_available <= 3 && product.quantity_available > 0 && product.status === 'AVAILABLE' && (
-          <p className="mt-1 text-xs font-medium text-amber-600">
-            Only {product.quantity_available} left!
+
+        <div className="flex flex-1 flex-col p-3">
+          <p className="line-clamp-2 text-sm font-medium leading-snug text-neutral-800">
+            {product.name}
           </p>
-        )}
+          <p className="mt-0.5 text-xs text-neutral-400">{product.category.name}</p>
+          {product.brand && <p className="mt-0.5 text-xs text-neutral-400">{product.brand}</p>}
+          <div className="mt-auto pt-2">
+            <PriceDisplay price={product.price} discountPercent={product.discount_percent} />
+          </div>
+          {product.quantity_available <= 3 && product.quantity_available > 0 && product.status === 'AVAILABLE' && (
+            <p className="mt-1 text-xs font-medium text-amber-600">
+              Only {product.quantity_available} left!
+            </p>
+          )}
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+// ─── Customer contact popup ──────────────────────────────────────────────────
+
+function CustomerContactPopup({
+  shopSlug,
+  onClose,
+  onSubmitted,
+}: {
+  shopSlug: string;
+  onClose: () => void;
+  onSubmitted: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [email, setEmail] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () => submitCustomerContact(shopSlug, { name: name || undefined, whatsapp: whatsapp || undefined, email: email || undefined }),
+    onSuccess: () => onSubmitted(),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-md rounded-t-2xl bg-white px-6 pb-8 pt-6 shadow-2xl sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 text-neutral-400 hover:text-neutral-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        <h3 className="text-lg font-semibold text-neutral-900">Stay updated!</h3>
+        <p className="mt-1 text-sm text-neutral-500">
+          Get notified about new arrivals, restocks and exclusive offers. This is completely optional.
+        </p>
+
+        <div className="mt-4 space-y-3">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name (optional)"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          />
+          <input
+            type="tel"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            placeholder="WhatsApp number (optional)"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email (optional)"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          />
+        </div>
+
+        <div className="mt-5 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          >
+            Skip
+          </button>
+          <button
+            type="button"
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || (!name && !whatsapp && !email)}
+            className="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #8B1A1A, #c9a84c)' }}
+          >
+            {mutation.isPending ? 'Saving…' : 'Submit'}
+          </button>
+        </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -297,14 +418,60 @@ const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
 export default function ShopCatalogPage() {
   const { shopSlug } = useParams<{ shopSlug: string }>();
   const slug = shopSlug ?? '';
+  const location = useLocation();
+  const skipSplash = (location.state as { skipSplash?: boolean } | null)?.skipSplash === true;
 
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(!skipSplash);
   const [activeTab, setActiveTab] = useState<NavTab>('catalog');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState<number | ''>('');
   const [sort, setSort] = useState<SortOption>('newest');
+  const [page, setPage] = useState(1);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [colorFilter, setColorFilter] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
+
+  // Customer contact popup
+  const [showContactPopup, setShowContactPopup] = useState(false);
+  const [contactDismissed, setContactDismissed] = useState(() => {
+    try { return sessionStorage.getItem('contact_popup_dismissed') === '1'; } catch { return false; }
+  });
+  const productViewCount = useRef(0);
+
+  // Likes tracked per session in memory
+  const [likedProducts, setLikedProducts] = useState<Set<number>>(() => new Set());
+
+  const handleLike = useCallback(
+    (productId: number) => {
+      toggleProductLike(slug, productId).then((result) => {
+        setLikedProducts((prev) => {
+          const next = new Set(prev);
+          if (result.liked) next.add(productId);
+          else next.delete(productId);
+          return next;
+        });
+      });
+    },
+    [slug],
+  );
+
+  // Show contact popup after browsing 5 products (once per session)
+  useEffect(() => {
+    if (!contactDismissed && productViewCount.current >= 5 && !showContactPopup) {
+      setShowContactPopup(true);
+    }
+  }, [contactDismissed, showContactPopup]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, categoryId, sort, colorFilter, brandFilter, priceMin, priceMax]);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
@@ -333,25 +500,27 @@ export default function ShopCatalogPage() {
   const shopUnavailable =
     shopIsError && shopError instanceof AxiosError && shopError.response?.status === 403;
 
+  const PAGE_SIZE = 20;
+
   const {
-    data: productPages,
+    data: productPage,
     isLoading: productsLoading,
     isError: productsIsError,
     refetch: refetchProducts,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ['public', 'products', slug, { categoryId, search, sort }],
-    queryFn: ({ pageParam }) =>
+  } = useQuery({
+    queryKey: ['public', 'products', slug, { categoryId, search, sort, page, colorFilter, brandFilter, priceMin, priceMax }],
+    queryFn: () =>
       listShopProducts(slug, {
         categoryId: categoryId || undefined,
         search: search || undefined,
         sort,
-        page: pageParam,
+        page,
+        pageSize: PAGE_SIZE,
+        color: colorFilter || undefined,
+        brand: brandFilter || undefined,
+        priceMin: priceMin ? Number(priceMin) : undefined,
+        priceMax: priceMax ? Number(priceMax) : undefined,
       }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
     enabled: Boolean(slug) && Boolean(catalog),
   });
 
@@ -384,9 +553,13 @@ export default function ShopCatalogPage() {
     );
   }
 
-  const products = productPages?.pages.flatMap((page) => page.items) ?? [];
-  const total = productPages?.pages[0]?.total ?? 0;
-  const hasFilters = Boolean(search || categoryId);
+  const products = productPage?.items ?? [];
+  const suggestions = productPage?.suggestions ?? null;
+  const total = productPage?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const hasFilters = Boolean(search || categoryId || colorFilter || brandFilter || priceMin || priceMax);
+  const activeFilterCount = [colorFilter, brandFilter, priceMin, priceMax].filter(Boolean).length;
+  const priceRangeInverted = priceMin !== '' && priceMax !== '' && Number(priceMin) > Number(priceMax);
   const { shop, categories } = catalog;
 
   return (
@@ -558,6 +731,20 @@ export default function ShopCatalogPage() {
                 }}
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setShowFilters((v) => !v)}
+              className="relative flex items-center gap-1 rounded-full border px-3 py-2 text-xs font-medium transition-colors focus:outline-none"
+              style={{ borderColor: 'rgba(139,26,26,0.2)', color: '#8B1A1A' }}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
@@ -572,6 +759,72 @@ export default function ShopCatalogPage() {
               ))}
             </select>
           </div>
+
+          {/* Filter panel */}
+          {showFilters && (
+            <div className="mx-auto mt-3 flex max-w-5xl flex-wrap items-end gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-neutral-500">Color</span>
+                <input
+                  type="text"
+                  value={colorFilter}
+                  onChange={(e) => setColorFilter(e.target.value)}
+                  placeholder="e.g. Red"
+                  className="w-28 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
+                  style={{ borderColor: 'rgba(139,26,26,0.2)' }}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-neutral-500">Brand</span>
+                <input
+                  type="text"
+                  value={brandFilter}
+                  onChange={(e) => setBrandFilter(e.target.value)}
+                  placeholder="e.g. Banarasi"
+                  className="w-28 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
+                  style={{ borderColor: 'rgba(139,26,26,0.2)' }}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-neutral-500">Min price</span>
+                <input
+                  type="number"
+                  value={priceMin}
+                  onChange={(e) => setPriceMin(e.target.value)}
+                  placeholder="₹0"
+                  min="0"
+                  className="w-24 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
+                  style={{ borderColor: 'rgba(139,26,26,0.2)' }}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-neutral-500">Max price</span>
+                <input
+                  type="number"
+                  value={priceMax}
+                  onChange={(e) => setPriceMax(e.target.value)}
+                  placeholder="No limit"
+                  min="0"
+                  className="w-24 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
+                  style={{ borderColor: 'rgba(139,26,26,0.2)' }}
+                />
+              </label>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setColorFilter(''); setBrandFilter(''); setPriceMin(''); setPriceMax(''); }}
+                  className="rounded-full px-3 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50"
+                >
+                  Clear filters
+                </button>
+              )}
+              {priceRangeInverted && (
+                <p className="w-full text-xs text-amber-600">
+                  Min price is higher than max — we swapped them automatically.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Product grid ── */}
@@ -626,16 +879,33 @@ export default function ShopCatalogPage() {
           )}
 
           {!productsLoading && !productsIsError && products.length === 0 && hasFilters && (
-            <div className="flex flex-col items-center rounded-2xl border border-dashed border-neutral-200 bg-white px-6 py-16 text-center">
-              <Search className="h-8 w-8 text-neutral-300" />
-              <p className="mt-3 text-sm font-medium text-neutral-700">No products found</p>
-              <button
-                type="button"
-                onClick={() => { setSearchInput(''); setCategoryId(''); }}
-                className="mt-3 rounded-full bg-brand-600 px-4 py-1.5 text-xs font-medium text-white"
-              >
-                Clear filters
-              </button>
+            <div className="space-y-6">
+              <div className="flex flex-col items-center rounded-2xl border border-dashed border-neutral-200 bg-white px-6 py-10 text-center">
+                <Search className="h-8 w-8 text-neutral-300" />
+                <p className="mt-3 text-sm font-medium text-neutral-700">No exact matches found</p>
+                <p className="mt-1 text-xs text-neutral-400">Try adjusting your search or filters</p>
+                <button
+                  type="button"
+                  onClick={() => { setSearchInput(''); setCategoryId(''); setColorFilter(''); setBrandFilter(''); setPriceMin(''); setPriceMax(''); }}
+                  className="mt-3 rounded-full bg-brand-600 px-4 py-1.5 text-xs font-medium text-white"
+                >
+                  Clear all filters
+                </button>
+              </div>
+
+              {/* Smart search: show available suggestions */}
+              {suggestions && suggestions.length > 0 && (
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold text-neutral-700">
+                    You might also like
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+                    {suggestions.map((product) => (
+                      <ProductCard key={product.id} product={product} slug={slug} onLike={handleLike} liked={likedProducts.has(product.id)} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -647,20 +917,71 @@ export default function ShopCatalogPage() {
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                 {products.map((product) => (
-                  <ProductCard key={product.id} product={product} slug={slug} />
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    slug={slug}
+                    onLike={handleLike}
+                    liked={likedProducts.has(product.id)}
+                    onProductClick={() => {
+                      productViewCount.current += 1;
+                      if (!contactDismissed && productViewCount.current >= 5) {
+                        setShowContactPopup(true);
+                      }
+                    }}
+                  />
                 ))}
               </div>
 
-              {hasNextPage && (
-                <div className="flex justify-center py-8">
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 py-8">
                   <button
                     type="button"
-                    onClick={() => fetchNextPage()}
-                    disabled={isFetchingNextPage}
-                    className="rounded-full border px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-60"
+                    onClick={() => { setPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={page <= 1}
+                    className="rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-40"
                     style={{ borderColor: 'rgba(139,26,26,0.3)', color: '#8B1A1A' }}
                   >
-                    {isFetchingNextPage ? 'Loading…' : 'Load more'}
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                    .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('ellipsis');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, idx) =>
+                      p === 'ellipsis' ? (
+                        <span key={`e${idx}`} className="px-1 text-sm text-neutral-400">…</span>
+                      ) : (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                          className={`h-9 w-9 rounded-full text-sm font-medium transition-colors ${
+                            page === p
+                              ? 'text-white shadow-sm'
+                              : 'border text-neutral-600 hover:bg-neutral-100'
+                          }`}
+                          style={
+                            page === p
+                              ? { background: 'linear-gradient(135deg, #8B1A1A, #c9a84c)' }
+                              : { borderColor: 'rgba(139,26,26,0.2)' }
+                          }
+                        >
+                          {p}
+                        </button>
+                      ),
+                    )}
+                  <button
+                    type="button"
+                    onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={page >= totalPages}
+                    className="rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-40"
+                    style={{ borderColor: 'rgba(139,26,26,0.3)', color: '#8B1A1A' }}
+                  >
+                    Next
                   </button>
                 </div>
               )}
@@ -668,6 +989,23 @@ export default function ShopCatalogPage() {
           )}
         </main>
       </div>
+
+      {/* Customer contact popup */}
+      {showContactPopup && (
+        <CustomerContactPopup
+          shopSlug={slug}
+          onClose={() => {
+            setShowContactPopup(false);
+            setContactDismissed(true);
+            try { sessionStorage.setItem('contact_popup_dismissed', '1'); } catch {}
+          }}
+          onSubmitted={() => {
+            setShowContactPopup(false);
+            setContactDismissed(true);
+            try { sessionStorage.setItem('contact_popup_dismissed', '1'); } catch {}
+          }}
+        />
+      )}
 
       {/* Pinterest-style bottom nav (mobile only) */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} shopPhone={shop.phone} />

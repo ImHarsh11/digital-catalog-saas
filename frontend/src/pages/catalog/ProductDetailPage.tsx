@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { ArrowLeft, Share2 } from 'lucide-react';
-import { getShopProduct } from '@/services/publicCatalog';
+import { ArrowLeft, Heart, Share2 } from 'lucide-react';
+import { getProductLikeStatus, getShopProduct, toggleProductLike } from '@/services/publicCatalog';
 import { customerStatusBadge } from '@/utils/customerProductStatus';
 import { formatPrice } from '@/utils/currency';
 import { useToast } from '@/hooks/useToast';
@@ -18,7 +18,21 @@ export default function ProductDetailPage() {
   const slug = shopSlug ?? '';
   const id = Number(productId);
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [activeImage, setActiveImage] = useState(0);
+
+  const { data: likeStatus } = useQuery({
+    queryKey: ['public', 'like', slug, id],
+    queryFn: () => getProductLikeStatus(slug, id),
+    enabled: Boolean(slug) && Number.isFinite(id),
+  });
+
+  const likeMutation = useMutation({
+    mutationFn: () => toggleProductLike(slug, id),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['public', 'like', slug, id], result);
+    },
+  });
 
   const {
     data,
@@ -102,19 +116,35 @@ export default function ProductDetailPage() {
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
         <Link
           to={`/shop/${slug}`}
+          state={{ skipSplash: true }}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to catalog
         </Link>
-        <button
-          type="button"
-          onClick={handleShare}
-          className="inline-flex items-center gap-1.5 rounded-full border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-        >
-          <Share2 className="h-3.5 w-3.5" />
-          Share
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => likeMutation.mutate()}
+            disabled={likeMutation.isPending}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+              likeStatus?.liked
+                ? 'border-red-200 bg-red-50 text-red-600'
+                : 'border-neutral-300 text-neutral-700 hover:bg-neutral-50'
+            }`}
+          >
+            <Heart className={`h-3.5 w-3.5 ${likeStatus?.liked ? 'fill-red-500 text-red-500' : ''}`} />
+            {likeStatus?.like_count ?? 0}
+          </button>
+          <button
+            type="button"
+            onClick={handleShare}
+            className="inline-flex items-center gap-1.5 rounded-full border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            Share
+          </button>
+        </div>
       </div>
 
       <div className="mx-auto max-w-3xl px-4 pt-4 sm:px-6">
@@ -160,6 +190,20 @@ export default function ProductDetailPage() {
           </div>
           <p className="mt-1 text-sm text-neutral-500">{product.category.name}</p>
           {product.product_code && <p className="mt-0.5 text-xs text-neutral-400">Code: {product.product_code}</p>}
+          {(product.color || product.brand) && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {product.brand && (
+                <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600">
+                  {product.brand}
+                </span>
+              )}
+              {product.color && (
+                <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-600">
+                  {product.color}
+                </span>
+              )}
+            </div>
+          )}
           {product.discount_percent ? (
             <div className="mt-4 flex flex-col gap-0.5">
               <div className="flex items-center gap-2">

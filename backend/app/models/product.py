@@ -44,6 +44,8 @@ class Product(Base, TimestampMixin):
     primary_image_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     quantity_available: Mapped[int] = mapped_column(default=1, server_default="1", nullable=False)
     discount_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    color: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    brand: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Who uploaded this product — shop owner themselves, or the SaaS catalog
     # team on their behalf. Drives the future per-product service billing.

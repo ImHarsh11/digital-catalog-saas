@@ -30,7 +30,12 @@ from app.models.category import Category
 from app.models.enums import CustomerEventType
 from app.models.product import Product
 from app.models.shop import Shop
+from app.models.customer_contact import CustomerContact
+from app.models.product_like import ProductLike
 from app.schemas.public import (
+    CustomerContactCreate,
+    CustomerContactResponse,
+    ProductLikeResponse,
     PublicCategory,
     PublicProductDetail,
     PublicProductImage,
@@ -71,6 +76,8 @@ def _to_list_item(product: Product) -> PublicProductListItem:
         primary_image_url=product.primary_image_url,
         quantity_available=product.quantity_available,
         discount_percent=float(product.discount_percent) if product.discount_percent is not None else None,
+        color=product.color,
+        brand=product.brand,
     )
 
 
@@ -127,10 +134,20 @@ def list_shop_products(
     page_size: int = Query(
         default=catalog_service.DEFAULT_PAGE_SIZE, ge=1, le=catalog_service.MAX_PAGE_SIZE
     ),
+    color: str | None = Query(default=None, max_length=100),
+    brand: str | None = Query(default=None, max_length=255),
+    price_min: float | None = Query(default=None, ge=0),
+    price_max: float | None = Query(default=None, ge=0),
     db: Session = Depends(get_db),
     anon_session_id: str | None = Header(default=None, alias="X-Anon-Session-Id", max_length=64),
 ) -> PublicProductPage:
     shop = _get_shop_or_error(db, shop_slug)
+
+    # Gracefully handle min > max: swap them so the query still makes sense
+    # rather than returning zero results for a user mistake.
+    if price_min is not None and price_max is not None and price_min > price_max:
+        price_min, price_max = price_max, price_min
+
     result = catalog_service.list_products(
         db,
         shop.id,
@@ -140,6 +157,10 @@ def list_shop_products(
         sort=sort,
         page=page,
         page_size=page_size,
+        color=color,
+        brand=brand,
+        price_min=price_min,
+        price_max=price_max,
     )
 
     # Best-effort, anonymous analytics -- a search and/or a category browse
@@ -155,12 +176,31 @@ def list_shop_products(
         )
     db.commit()
 
+    # When a search/filter yields zero results, include a few suggested
+    # available products so the customer still sees something useful.
+    suggestions = None
+    has_filters = bool(search or category_id is not None or color or brand or price_min is not None or price_max is not None)
+    if result.total == 0 and has_filters:
+        # Pass whatever context the customer was filtering by so
+        # suggestions are prioritised by relevance (same category,
+        # brand, color, similar price) rather than purely chronological.
+        suggested = catalog_service.get_suggestions(
+            db,
+            shop.id,
+            category_id=category_id,
+            brand=brand,
+            color=color,
+            price_ref=price_min if price_min is not None else price_max,
+        )
+        suggestions = [_to_list_item(p) for p in suggested]
+
     return PublicProductPage(
         items=[_to_list_item(product) for product in result.items],
         total=result.total,
         page=page,
         page_size=page_size,
         has_more=(page * page_size) < result.total,
+        suggestions=suggestions,
     )
 
 
@@ -183,3 +223,102 @@ def get_shop_product(
     )
     db.commit()
     return _to_detail(product)
+
+
+# ── Customer contact collection ───────────────────────────────────────────────
+
+
+@router.post("/{shop_slug}/contacts", response_model=CustomerContactResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+def submit_customer_contact(
+    request: Request,
+    shop_slug: str,
+    payload: CustomerContactCreate,
+    db: Session = Depends(get_db),
+    anon_session_id: str | None = Header(default=None, alias="X-Anon-Session-Id", max_length=64),
+) -> CustomerContactResponse:
+    """Accept optional customer contact info from the catalog popup."""
+    shop = _get_shop_or_error(db, shop_slug)
+    contact = CustomerContact(
+        shop_id=shop.id,
+        name=payload.name,
+        whatsapp=payload.whatsapp,
+        email=payload.email,
+        anonymous_session_id=anon_session_id[:64] if anon_session_id else None,
+    )
+    db.add(contact)
+    db.commit()
+    db.refresh(contact)
+    return CustomerContactResponse(
+        id=contact.id,
+        name=contact.name,
+        whatsapp=contact.whatsapp,
+        email=contact.email,
+    )
+
+
+# ── Product likes / interest ──────────────────────────────────────────────────
+
+
+@router.post("/{shop_slug}/products/{product_id}/like", response_model=ProductLikeResponse)
+@limiter.limit("60/minute")
+def toggle_product_like(
+    request: Request,
+    shop_slug: str,
+    product_id: int,
+    db: Session = Depends(get_db),
+    anon_session_id: str | None = Header(default=None, alias="X-Anon-Session-Id", max_length=64),
+) -> ProductLikeResponse:
+    """Toggle like on a product. If already liked by this session, unlike it."""
+    shop = _get_shop_or_error(db, shop_slug)
+    product = catalog_service.get_product(db, shop.id, product_id)
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
+    if not anon_session_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Session ID required.")
+
+    session_id = anon_session_id[:64]
+    existing = (
+        db.query(ProductLike)
+        .filter(ProductLike.product_id == product_id, ProductLike.anonymous_session_id == session_id)
+        .first()
+    )
+    if existing:
+        db.delete(existing)
+        liked = False
+    else:
+        db.add(ProductLike(shop_id=shop.id, product_id=product_id, anonymous_session_id=session_id))
+        liked = True
+    db.commit()
+
+    like_count = db.query(ProductLike).filter(ProductLike.product_id == product_id).count()
+    return ProductLikeResponse(product_id=product_id, liked=liked, like_count=like_count)
+
+
+@router.get("/{shop_slug}/products/{product_id}/like", response_model=ProductLikeResponse)
+@limiter.limit("60/minute")
+def get_product_like_status(
+    request: Request,
+    shop_slug: str,
+    product_id: int,
+    db: Session = Depends(get_db),
+    anon_session_id: str | None = Header(default=None, alias="X-Anon-Session-Id", max_length=64),
+) -> ProductLikeResponse:
+    """Check if the current session has liked this product."""
+    shop = _get_shop_or_error(db, shop_slug)
+    product = catalog_service.get_product(db, shop.id, product_id)
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
+
+    liked = False
+    if anon_session_id:
+        session_id = anon_session_id[:64]
+        existing = (
+            db.query(ProductLike)
+            .filter(ProductLike.product_id == product_id, ProductLike.anonymous_session_id == session_id)
+            .first()
+        )
+        liked = existing is not None
+
+    like_count = db.query(ProductLike).filter(ProductLike.product_id == product_id).count()
+    return ProductLikeResponse(product_id=product_id, liked=liked, like_count=like_count)

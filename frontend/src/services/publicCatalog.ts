@@ -1,5 +1,12 @@
 import { publicApi } from './publicApi';
-import type { PublicProductDetail, PublicProductPage, PublicShopResponse } from '@/types/publicCatalog';
+import type {
+  CustomerContactInput,
+  CustomerContactResponse,
+  ProductLikeResponse,
+  PublicProductDetail,
+  PublicProductPage,
+  PublicShopResponse,
+} from '@/types/publicCatalog';
 
 export type SortOption = 'newest' | 'price_asc' | 'price_desc';
 export type AvailabilityFilter = 'available' | 'unavailable';
@@ -10,6 +17,11 @@ export interface PublicProductFilters {
   search?: string;
   sort?: SortOption;
   page?: number;
+  pageSize?: number;
+  color?: string;
+  brand?: string;
+  priceMin?: number;
+  priceMax?: number;
 }
 
 export async function getShopCatalog(shopSlug: string): Promise<PublicShopResponse> {
@@ -27,11 +39,47 @@ export async function listShopProducts(
   if (filters.search) params.search = filters.search;
   if (filters.sort) params.sort = filters.sort;
   if (filters.page) params.page = String(filters.page);
+  if (filters.pageSize) params.page_size = String(filters.pageSize);
+  if (filters.color) params.color = filters.color;
+  if (filters.brand) params.brand = filters.brand;
+  if (filters.priceMin !== undefined) params.price_min = String(filters.priceMin);
+  if (filters.priceMax !== undefined) params.price_max = String(filters.priceMax);
   const { data } = await publicApi.get<PublicProductPage>(`/api/public/shops/${shopSlug}/products`, { params });
   return data;
 }
 
 export async function getShopProduct(shopSlug: string, productId: number): Promise<PublicProductDetail> {
   const { data } = await publicApi.get<PublicProductDetail>(`/api/public/shops/${shopSlug}/products/${productId}`);
+  return data;
+}
+
+export async function submitCustomerContact(
+  shopSlug: string,
+  contact: CustomerContactInput,
+): Promise<CustomerContactResponse> {
+  const { data } = await publicApi.post<CustomerContactResponse>(
+    `/api/public/shops/${shopSlug}/contacts`,
+    contact,
+  );
+  return data;
+}
+
+export async function toggleProductLike(
+  shopSlug: string,
+  productId: number,
+): Promise<ProductLikeResponse> {
+  const { data } = await publicApi.post<ProductLikeResponse>(
+    `/api/public/shops/${shopSlug}/products/${productId}/like`,
+  );
+  return data;
+}
+
+export async function getProductLikeStatus(
+  shopSlug: string,
+  productId: number,
+): Promise<ProductLikeResponse> {
+  const { data } = await publicApi.get<ProductLikeResponse>(
+    `/api/public/shops/${shopSlug}/products/${productId}/like`,
+  );
   return data;
 }

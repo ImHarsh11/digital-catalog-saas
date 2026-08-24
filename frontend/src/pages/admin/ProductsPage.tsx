@@ -98,8 +98,8 @@ export default function ProductsPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Products</h1>
-          <p className="mt-1 text-sm text-neutral-500">Manage what's in your catalog.</p>
+          <h1 className="text-xl font-semibold text-neutral-900 dark:text-white">Products</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Manage what's in your catalog.</p>
         </div>
         <Link
           to="/admin/products/new"
@@ -118,13 +118,13 @@ export default function ProductsPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by name or product code..."
-            className="w-full rounded-lg border border-neutral-300 py-2 pl-9 pr-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            className="w-full rounded-lg border border-neutral-300 bg-white py-2 pl-9 pr-3 text-sm text-neutral-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-white dark:placeholder-neutral-400"
           />
         </div>
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : '')}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-white"
         >
           <option value="">All categories</option>
           {categories?.map((category) => (
@@ -136,7 +136,7 @@ export default function ProductsPage() {
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value as ProductStatus | '')}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-white"
         >
           {STATUS_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -190,7 +190,7 @@ export default function ProductsPage() {
           {products.map((product) => {
             const badge = productStatusBadge(product.status);
             return (
-              <div key={product.id} className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white">
+              <div key={product.id} className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800">
                 <div className="flex h-40 items-center justify-center bg-neutral-100">
                   {product.primary_image_url ? (
                     <img
@@ -205,7 +205,7 @@ export default function ProductsPage() {
                 <div className="flex flex-1 flex-col p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="font-medium text-neutral-900">{product.name}</p>
+                      <p className="font-medium text-neutral-900 dark:text-white">{product.name}</p>
                       {product.product_code && (
                         <p className="text-xs text-neutral-400">Code: {product.product_code}</p>
                       )}
@@ -213,7 +213,7 @@ export default function ProductsPage() {
                     <Badge tone={badge.tone}>{badge.label}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-neutral-500">{product.category.name}</p>
-                  <p className="mt-2 text-lg font-semibold text-neutral-900">{formatPrice(product.price)}</p>
+                  <p className="mt-2 text-lg font-semibold text-neutral-900 dark:text-white">{formatPrice(product.price)}</p>
                   {product.created_by && (
                     <p className="mt-1 text-xs text-neutral-400">
                       Added by {product.created_by.role === 'SUPER_ADMIN' ? 'Catalog Team' : product.created_by.name}
