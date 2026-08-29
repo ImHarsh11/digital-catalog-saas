@@ -148,6 +148,7 @@ export interface LeadSelectionItem {
   name: string;
   primary_image_url: string | null;
   price: number;
+  discount_percent: number | null;
   note: string | null;
 }
 

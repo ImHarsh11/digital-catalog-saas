@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Check, Heart, Pencil, Trash2, X } from 'lucide-react';
 import { getShopCatalog } from '@/services/publicCatalog';
 import { useSelection } from '@/hooks/useSelection';
-import { formatPrice } from '@/utils/currency';
+import { effectivePrice, formatPrice } from '@/utils/currency';
 import ProductImage from '@/components/catalog/ProductImage';
 import Spinner from '@/components/Spinner';
 import CatalogThemeProvider from '@/components/catalog/CatalogThemeProvider';
@@ -116,9 +116,21 @@ export default function MySelectionPage() {
                         {product.category.name}
                         {product.product_code ? ` · ${product.product_code}` : ''}
                       </p>
-                      <p className="mt-0.5 text-sm font-semibold" style={{ color: 'var(--catalog-primary)' }}>
-                        {formatPrice(product.price)}
-                      </p>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <span className="text-sm font-semibold" style={{ color: 'var(--catalog-primary)' }}>
+                          {formatPrice(effectivePrice(product.price, product.discount_percent))}
+                        </span>
+                        {product.discount_percent ? (
+                          <>
+                            <span className="text-xs line-through" style={{ color: 'var(--catalog-ink-muted)' }}>
+                              {formatPrice(product.price)}
+                            </span>
+                            <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
+                              {Math.round(product.discount_percent)}% off
+                            </span>
+                          </>
+                        ) : null}
+                      </div>
 
                       {editing === product.id ? (
                         <div className="mt-2 flex items-center gap-1.5">

@@ -10,7 +10,7 @@ import {
   toggleProductLike,
 } from '@/services/publicCatalog';
 import { customerStatusBadge } from '@/utils/customerProductStatus';
-import { formatPrice } from '@/utils/currency';
+import { effectivePrice, formatPrice } from '@/utils/currency';
 import { useToast } from '@/hooks/useToast';
 import ProductImage from '@/components/catalog/ProductImage';
 import Spinner from '@/components/Spinner';
@@ -223,7 +223,7 @@ export default function ProductDetailPage() {
             <div className="mt-4 flex flex-col gap-0.5">
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-bold text-brand-700">
-                  {formatPrice(product.price * (1 - product.discount_percent / 100))}
+                  {formatPrice(effectivePrice(product.price, product.discount_percent))}
                 </span>
                 <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">
                   {Math.round(product.discount_percent)}% off

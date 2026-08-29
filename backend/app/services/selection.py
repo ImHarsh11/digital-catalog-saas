@@ -147,6 +147,9 @@ def list_leads(db: Session, shop_id: int) -> list[dict]:
                         "name": p.name,
                         "primary_image_url": p.primary_image_url,
                         "price": float(p.price),
+                        "discount_percent": (
+                            float(p.discount_percent) if p.discount_percent else None
+                        ),
                         "note": it.note,
                     }
                 )

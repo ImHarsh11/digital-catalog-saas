@@ -36,6 +36,7 @@ class LeadSelectionItem(BaseModel):
     name: str
     primary_image_url: str | None
     price: float
+    discount_percent: float | None = None
     note: str | None
 
 

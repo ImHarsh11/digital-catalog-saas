@@ -204,6 +204,25 @@ def test_leads_shows_captured_contacts_with_their_picks(
     assert lead["consent_marketing"] is False
     assert lead["selected_items"][0]["name"] == "Picked Saree"
     assert lead["selected_items"][0]["note"] == "gift wrap"
+    assert lead["selected_items"][0]["discount_percent"] is None
+
+
+def test_leads_item_carries_discount_percent(client, shop_a, category_a, owner_a, db_session):
+    p = _product(db_session, shop_a, category_a, name="On Sale Saree", price=1000, discount_percent=20)
+    client.post(
+        f"/api/public/shops/{shop_a.slug}/selection/items",
+        json={"product_id": p.id},
+        headers=DEV,
+    )
+    client.post(
+        f"/api/public/shops/{shop_a.slug}/contacts",
+        json={"whatsapp": "9876543210", "consent_processing": True, "consent_marketing": False},
+        headers=DEV,
+    )
+    headers = auth_headers(client, owner_a.email, "OwnerA123!")
+    item = client.get(f"/api/shops/{shop_a.id}/leads", headers=headers).json()[0]["selected_items"][0]
+    assert item["price"] == 1000
+    assert item["discount_percent"] == 20
 
 
 def test_leads_is_owner_only(client, shop_a, super_admin, owner_b):

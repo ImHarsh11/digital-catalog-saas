@@ -10,7 +10,7 @@ import { ImageOff, Mail, MessageCircle, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getLeads } from '@/services/shopOwner';
 import { getApiErrorMessage } from '@/utils/apiError';
-import { formatPrice } from '@/utils/currency';
+import { effectivePrice, formatPrice } from '@/utils/currency';
 import ErrorState from '@/components/ErrorState';
 import Spinner from '@/components/Spinner';
 import type { Lead } from '@/types/dashboard';
@@ -26,7 +26,10 @@ function waLink(raw: string): string | null {
 
 function LeadCard({ lead }: { lead: Lead }) {
   const wa = lead.whatsapp ? waLink(lead.whatsapp) : null;
-  const total = lead.selected_items.reduce((sum, i) => sum + i.price, 0);
+  const total = lead.selected_items.reduce(
+    (sum, i) => sum + effectivePrice(i.price, i.discount_percent),
+    0,
+  );
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
@@ -93,8 +96,13 @@ function LeadCard({ lead }: { lead: Lead }) {
                   <p className="truncate text-sm text-neutral-800 dark:text-neutral-200">{item.name}</p>
                   {item.note && <p className="truncate text-xs text-neutral-400">“{item.note}”</p>}
                 </div>
-                <span className="shrink-0 text-sm font-medium tabular-nums text-neutral-900 dark:text-neutral-100">
-                  {formatPrice(item.price)}
+                <span className="shrink-0 text-right text-sm font-medium tabular-nums text-neutral-900 dark:text-neutral-100">
+                  {formatPrice(effectivePrice(item.price, item.discount_percent))}
+                  {item.discount_percent ? (
+                    <span className="ml-1 text-xs font-normal text-neutral-400 line-through">
+                      {formatPrice(item.price)}
+                    </span>
+                  ) : null}
                 </span>
               </li>
             ))}

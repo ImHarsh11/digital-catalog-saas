@@ -9,7 +9,7 @@ import {
   toggleProductLike,
   type SortOption,
 } from '@/services/publicCatalog';
-import { formatPrice } from '@/utils/currency';
+import { effectivePrice, formatPrice } from '@/utils/currency';
 import ProductImage from '@/components/catalog/ProductImage';
 import Spinner from '@/components/Spinner';
 import CatalogThemeProvider from '@/components/catalog/CatalogThemeProvider';
@@ -33,7 +33,7 @@ function shopInitials(name: string): string {
 
 function discountedPrice(price: number, discountPercent: number | null): number | null {
   if (!discountPercent || discountPercent <= 0) return null;
-  return price * (1 - discountPercent / 100);
+  return effectivePrice(price, discountPercent);
 }
 
 // ─── Welcome / Splash screen ──────────────────────────────────────────────────
