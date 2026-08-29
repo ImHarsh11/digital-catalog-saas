@@ -222,7 +222,7 @@ export default function AnalyticsPage() {
                 spark={data.sales_series.map((s) => s.sold)}
               />
               <KpiTile
-                label="Added to Selection"
+                label="Saved to My Choice"
                 icon={Heart}
                 value={fmt(data.selection_adds.current)}
                 change={deltaOrNull(data.selection_adds)}
@@ -292,7 +292,7 @@ export default function AnalyticsPage() {
                         : 'text-neutral-500 hover:text-neutral-700'
                     }`}
                   >
-                    {tabKey === 'viewed' ? 'Most Viewed' : tabKey === 'sold' ? 'Most Sold' : 'Most Selected'}
+                    {tabKey === 'viewed' ? 'Most Viewed' : tabKey === 'sold' ? 'Most Sold' : 'Most Chosen'}
                   </button>
                 ))}
               </div>
@@ -316,7 +316,7 @@ export default function AnalyticsPage() {
               <TopProductList
                 rows={data.top_selected_products.map((p) => ({ ...p, count: p.add_count }))}
                 unit="adds"
-                emptyMessage="No products added to a customer selection in this period."
+                emptyMessage="No products saved to a customer's My Choice in this period."
               />
             )}
           </section>

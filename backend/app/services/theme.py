@@ -30,6 +30,49 @@ HERO_STYLES = {"ornate", "minimal", "photo"}
 SPLASH_STYLES = {"ornate", "minimal", "none"}
 CARD_SHAPES = {"rounded", "sharp"}
 
+# Curated heading + body font pairings. A shop can override the preset's own
+# fonts by naming one of these keys in `theme.font_pair`. Every face here
+# must also be in ALLOWED_FONTS (the catalog frontend only loads those).
+FONT_PAIRS: dict[str, dict] = {
+    "classic-serif": {
+        "label": "Classic Serif",
+        "heading_font": "Playfair Display",
+        "body_font": "Inter",
+    },
+    "modern-sans": {
+        "label": "Modern Sans",
+        "heading_font": "Poppins",
+        "body_font": "Poppins",
+    },
+    "editorial": {
+        "label": "Editorial",
+        "heading_font": "Fraunces",
+        "body_font": "Nunito Sans",
+    },
+    "elegant": {
+        "label": "Elegant",
+        "heading_font": "Cormorant Garamond",
+        "body_font": "Inter",
+    },
+    "bold-display": {
+        "label": "Bold Display",
+        "heading_font": "DM Serif Display",
+        "body_font": "Nunito Sans",
+    },
+    "clean-minimal": {
+        "label": "Clean & Minimal",
+        "heading_font": "Inter",
+        "body_font": "Inter",
+    },
+}
+
+
+def font_pair_choices() -> list[dict]:
+    return [
+        {"key": k, "label": v["label"], "heading_font": v["heading_font"], "body_font": v["body_font"]}
+        for k, v in FONT_PAIRS.items()
+    ]
+
 
 def _hex_to_rgb(value: str) -> tuple[int, int, int]:
     v = value.lstrip("#")
@@ -227,6 +270,11 @@ def resolve_theme(theme: dict | None) -> dict:
     primary = palette.get("primary") or preset["primary"]
     accent = palette.get("accent") or preset["accent"]
 
+    # Font pairing override (falls back to the preset's own fonts).
+    pair = FONT_PAIRS.get(theme.get("font_pair") or "")
+    heading_font = pair["heading_font"] if pair else preset["heading_font"]
+    body_font = pair["body_font"] if pair else preset["body_font"]
+
     splash_style = preset["splash_style"]
     splash_enabled = splash.get("enabled")
     if splash_enabled is None:
@@ -251,7 +299,7 @@ def resolve_theme(theme: dict | None) -> dict:
         "hero_style": preset["hero_style"],
         "hero_image_url": hero.get("image_url"),
         "hero_tagline": hero.get("tagline") or preset["hero_tagline"],
-        "heading_font": preset["heading_font"],
-        "body_font": preset["body_font"],
+        "heading_font": heading_font,
+        "body_font": body_font,
         "card_radius": _CARD_RADIUS[preset["card_shape"]],
     }

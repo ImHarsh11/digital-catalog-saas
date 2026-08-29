@@ -2,7 +2,7 @@ import { Check, Plus } from 'lucide-react';
 import { useSelection } from '@/hooks/useSelection';
 
 /**
- * "＋ Add to Selection" toggle. Adds/removes the product from the customer's
+ * "＋ Add to My Choice" toggle. Adds/removes the product from the customer's
  * device-keyed shortlist. Theme-driven — uses the catalog CSS vars so it
  * re-colours per shop. `card` is the compact pill on a product card; `full`
  * is the wide sticky CTA on the product detail page.
@@ -44,7 +44,7 @@ export default function SelectionButton({
         }
       >
         {inList ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-        {inList ? 'In your selection' : 'Add to Selection'}
+        {inList ? 'In My Choice' : 'Add to My Choice'}
       </button>
     );
   }
@@ -59,7 +59,7 @@ export default function SelectionButton({
       }}
       disabled={disabled || pending}
       aria-pressed={inList}
-      aria-label={inList ? 'Remove from selection' : 'Add to selection'}
+      aria-label={inList ? 'Remove from My Choice' : 'Add to My Choice'}
       className="flex items-center justify-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all active:scale-95 disabled:opacity-50"
       style={
         inList

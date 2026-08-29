@@ -16,8 +16,9 @@ import CatalogThemeProvider from '@/components/catalog/CatalogThemeProvider';
 import SelectionButton from '@/components/catalog/SelectionButton';
 import SelectionBar from '@/components/catalog/SelectionBar';
 import CustomerContactSheet, { contactPromptDone } from '@/components/catalog/CustomerContactSheet';
+import PromoCarousel from '@/components/catalog/PromoCarousel';
 import CatalogUnavailablePage from './CatalogUnavailablePage';
-import type { PublicProductListItem } from '@/types/publicCatalog';
+import type { PublicProductListItem, PublicPromo } from '@/types/publicCatalog';
 
 // ─── Utility helpers ──────────────────────────────────────────────────────────
 
@@ -362,7 +363,9 @@ export default function ShopCatalogPage() {
   const [categoryId, setCategoryId] = useState<number | ''>('');
   const [sort, setSort] = useState<SortOption>('newest');
   const [page, setPage] = useState(1);
+  const [activePromo, setActivePromo] = useState<PublicPromo | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   // Filters
   const [showFilters, setShowFilters] = useState(false);
@@ -403,7 +406,7 @@ export default function ShopCatalogPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [search, categoryId, sort, colorFilter, brandFilter, priceMin, priceMax]);
+  }, [search, categoryId, sort, colorFilter, brandFilter, priceMin, priceMax, activePromo]);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
@@ -434,27 +437,50 @@ export default function ShopCatalogPage() {
 
   const PAGE_SIZE = 20;
 
+  // A promo banner is a shortcut filter: on_sale → discounted, new_arrivals
+  // → added recently, new_collection → just force newest-first.
+  const promoDiscounted = activePromo?.kind === 'on_sale';
+  const promoNewDays = activePromo?.kind === 'new_arrivals' ? 21 : undefined;
+  const effectiveSort: SortOption = activePromo?.kind === 'new_collection' ? 'newest' : sort;
+
   const {
     data: productPage,
     isLoading: productsLoading,
     isError: productsIsError,
     refetch: refetchProducts,
   } = useQuery({
-    queryKey: ['public', 'products', slug, { categoryId, search, sort, page, colorFilter, brandFilter, priceMin, priceMax }],
+    queryKey: [
+      'public',
+      'products',
+      slug,
+      { categoryId, search, sort: effectiveSort, page, colorFilter, brandFilter, priceMin, priceMax, promo: activePromo?.key ?? null },
+    ],
     queryFn: () =>
       listShopProducts(slug, {
         categoryId: categoryId || undefined,
         search: search || undefined,
-        sort,
+        sort: effectiveSort,
         page,
         pageSize: PAGE_SIZE,
         color: colorFilter || undefined,
         brand: brandFilter || undefined,
         priceMin: priceMin ? Number(priceMin) : undefined,
         priceMax: priceMax ? Number(priceMax) : undefined,
+        discounted: promoDiscounted || undefined,
+        newWithinDays: promoNewDays,
       }),
     enabled: Boolean(slug) && Boolean(catalog),
   });
+
+  const selectPromo = useCallback((promo: PublicPromo | null) => {
+    setActivePromo(promo);
+    if (promo) {
+      setCategoryId('');
+      setSearchInput('');
+      setSearch('');
+      setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    }
+  }, []);
 
   if (shopLoading) {
     return (
@@ -489,10 +515,12 @@ export default function ShopCatalogPage() {
   const suggestions = productPage?.suggestions ?? null;
   const total = productPage?.total ?? 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
-  const hasFilters = Boolean(search || categoryId || colorFilter || brandFilter || priceMin || priceMax);
+  const hasFilters = Boolean(
+    search || categoryId || colorFilter || brandFilter || priceMin || priceMax || activePromo,
+  );
   const activeFilterCount = [colorFilter, brandFilter, priceMin, priceMax].filter(Boolean).length;
   const priceRangeInverted = priceMin !== '' && priceMax !== '' && Number(priceMin) > Number(priceMax);
-  const { shop, categories, theme } = catalog;
+  const { shop, categories, theme, promos } = catalog;
 
   return (
     <CatalogThemeProvider theme={theme}>
@@ -577,13 +605,24 @@ export default function ShopCatalogPage() {
           <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-yellow-400/60 to-transparent" />
         </header>
 
+        {/* ── Promo banners ── */}
+        {promos.length > 0 && (
+          <div className="mx-auto max-w-5xl px-4 sm:px-6">
+            <PromoCarousel
+              promos={promos}
+              activeKey={activePromo?.key ?? null}
+              onSelect={selectPromo}
+            />
+          </div>
+        )}
+
         {/* ── Category circles ── */}
         {categories.length > 0 && (
           <div className="mx-auto max-w-5xl px-4 pt-5 sm:px-6">
             <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
               <button
                 type="button"
-                onClick={() => setCategoryId('')}
+                onClick={() => { setCategoryId(''); setActivePromo(null); }}
                 className="flex shrink-0 flex-col items-center gap-1.5"
               >
                 <div
@@ -612,7 +651,7 @@ export default function ShopCatalogPage() {
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => setCategoryId(active ? '' : cat.id)}
+                    onClick={() => { setCategoryId(active ? '' : cat.id); setActivePromo(null); }}
                     className="flex shrink-0 flex-col items-center gap-1.5"
                   >
                     <div
@@ -770,7 +809,25 @@ export default function ShopCatalogPage() {
         </div>
 
         {/* ── Product grid ── */}
-        <main className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
+        <main ref={gridRef} className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
+          {activePromo && (
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold" style={{ color: 'var(--catalog-primary)' }}>
+                {activePromo.title}
+                <span className="ml-2 text-xs font-normal text-neutral-400">
+                  {total} item{total === 1 ? '' : 's'}
+                </span>
+              </p>
+              <button
+                type="button"
+                onClick={() => setActivePromo(null)}
+                className="rounded-full border px-3 py-1 text-xs font-medium"
+                style={{ borderColor: 'var(--catalog-hairline)', color: 'var(--catalog-primary)' }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
           {/* Mobile sort */}
           <div className="mb-3 flex items-center justify-between sm:hidden">
             <p className="text-xs text-neutral-400">

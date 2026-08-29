@@ -31,10 +31,18 @@ class PublicShop(BaseModel):
     website: str | None
 
 
+class PublicPromo(BaseModel):
+    key: str
+    title: str
+    subtitle: str
+    kind: str  # on_sale | new_arrivals | new_collection
+
+
 class PublicShopResponse(BaseModel):
     shop: PublicShop
     categories: list[PublicCategory]
     theme: ResolvedTheme
+    promos: list[PublicPromo] = []
 
 
 class PublicProductImage(BaseModel):

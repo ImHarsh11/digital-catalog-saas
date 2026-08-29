@@ -6,7 +6,7 @@ revenue only -- no catalog engagement data (product views, searches,
 sales, activity feed) is exposed here; that belongs to the shop owner.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -31,7 +31,8 @@ from app.schemas.shop import (
     ShopUpdate,
     SubscriptionActionResponse,
 )
-from app.schemas.theme import ResolvedTheme, ThemeConfig, ThemePresetInfo
+from app.schemas.theme import FontPairInfo, ResolvedTheme, ThemeConfig, ThemePresetInfo
+from app.services.storage import ImageValidationError, get_image_storage, validate_image_upload
 from app.schemas.user import UserRead
 from app.services import admin_metrics as metrics_service
 from app.services import billing as billing_service
@@ -150,6 +151,51 @@ def create_shop(payload: ShopCreate, db: Session = Depends(get_db)) -> ShopCreat
 @router.get("/theme-presets", response_model=list[ThemePresetInfo])
 def list_theme_presets() -> list[ThemePresetInfo]:
     return [ThemePresetInfo(**p) for p in theme_service.preset_choices()]
+
+
+@router.get("/font-pairs", response_model=list[FontPairInfo])
+def list_font_pairs() -> list[FontPairInfo]:
+    return [FontPairInfo(**p) for p in theme_service.font_pair_choices()]
+
+
+@router.post("/shops/{shop_id}/logo", response_model=ShopDetailResponse)
+async def upload_shop_logo(
+    shop_id: int, db: Session = Depends(get_db), file: UploadFile = File(...)
+) -> ShopDetailResponse:
+    """Upload a shop's logo (shown on the storefront header + splash)."""
+    shop = _get_shop_or_404(db, shop_id)
+    content = await file.read()
+    try:
+        validate_image_upload(content, file.content_type)
+    except ImageValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    storage = get_image_storage()
+    old_url = shop.logo_url
+    shop.logo_url = storage.save(content, file.content_type or "image/png", folder="shop-logos")
+    db.commit()
+    if old_url:
+        try:
+            storage.delete(old_url)
+        except Exception:  # noqa: BLE001 - best effort; a stale file is harmless
+            pass
+    db.refresh(shop)
+    return _detail_response(db, shop)
+
+
+@router.delete("/shops/{shop_id}/logo", response_model=ShopDetailResponse)
+def delete_shop_logo(shop_id: int, db: Session = Depends(get_db)) -> ShopDetailResponse:
+    shop = _get_shop_or_404(db, shop_id)
+    old_url = shop.logo_url
+    shop.logo_url = None
+    db.commit()
+    if old_url:
+        try:
+            get_image_storage().delete(old_url)
+        except Exception:  # noqa: BLE001
+            pass
+    db.refresh(shop)
+    return _detail_response(db, shop)
 
 
 @router.get("/shops/{shop_id}", response_model=ShopDetailResponse)

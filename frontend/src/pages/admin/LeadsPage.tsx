@@ -1,7 +1,7 @@
 /**
  * Shop-owner "Leads" — customers who left their details on the catalog,
- * with the products they added to their Selection. Read-only: there is no
- * per-selection workflow, the customer just shows their phone in person.
+ * with the products they added to My Choice. Read-only: there is no
+ * per-item workflow, the customer just shows their phone in person.
  */
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -132,7 +132,7 @@ export default function LeadsPage() {
         <div>
           <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Leads</h1>
           <p className="mt-0.5 text-sm text-neutral-500 dark:text-neutral-400">
-            Customers who left their details, and what they shortlisted
+            Customers who left their details, and what they chose
           </p>
         </div>
         {data && data.length > 0 && (
@@ -163,8 +163,8 @@ export default function LeadsPage() {
             {onlyOptedIn ? 'No marketing opt-ins yet' : 'No leads yet'}
           </p>
           <p className="mt-1 max-w-xs text-sm text-neutral-400">
-            When a customer fills the contact form on your catalog, they show up here with their
-            selection.
+            When a customer fills the contact form on your catalog, they show up here with what
+            they chose.
           </p>
         </div>
       )}

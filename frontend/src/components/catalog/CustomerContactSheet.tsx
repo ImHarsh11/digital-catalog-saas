@@ -71,7 +71,7 @@ export default function CustomerContactSheet({
 
   const heading =
     reason === 'selection'
-      ? 'Save your selection to your name?'
+      ? 'Save your choices to your name?'
       : 'Want the shop to help you faster?';
   const sub =
     reason === 'selection'

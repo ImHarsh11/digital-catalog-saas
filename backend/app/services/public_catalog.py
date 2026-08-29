@@ -22,8 +22,9 @@ uses for the shop-owner API.
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.category import Category
@@ -35,6 +36,9 @@ from app.services import billing as billing_service
 
 DEFAULT_PAGE_SIZE = 24
 MAX_PAGE_SIZE = 60
+
+# "New arrivals" = added within this many days.
+NEW_ARRIVAL_DAYS = 21
 
 
 class ShopNotFoundError(Exception):
@@ -85,6 +89,63 @@ _SORT_COLUMNS = {
 }
 
 
+def _new_arrival_cutoff() -> datetime:
+    return datetime.now(timezone.utc) - timedelta(days=NEW_ARRIVAL_DAYS)
+
+
+def get_promos(db: Session, shop_id: int) -> list[dict]:
+    """Auto-generated storefront promo banners, built purely from catalog
+    state -- no owner setup. Only promos that actually have matching
+    products are returned, newest-worthy first.
+    """
+    avail = db.query(Product).filter(
+        Product.shop_id == shop_id, Product.status == ProductStatus.AVAILABLE
+    )
+
+    promos: list[dict] = []
+
+    sale_q = avail.filter(Product.discount_percent.isnot(None), Product.discount_percent > 0)
+    sale_count = sale_q.count()
+    if sale_count:
+        max_off = db.query(func.max(Product.discount_percent)).filter(
+            Product.shop_id == shop_id,
+            Product.status == ProductStatus.AVAILABLE,
+            Product.discount_percent > 0,
+        ).scalar() or 0
+        promos.append(
+            {
+                "key": "on_sale",
+                "title": f"Up to {int(round(float(max_off)))}% Off",
+                "subtitle": f"{sale_count} style{'s' if sale_count != 1 else ''} on sale",
+                "kind": "on_sale",
+            }
+        )
+
+    new_count = avail.filter(Product.created_at >= _new_arrival_cutoff()).count()
+    if new_count:
+        promos.append(
+            {
+                "key": "new_arrivals",
+                "title": "New Arrivals",
+                "subtitle": f"{new_count} just added",
+                "kind": "new_arrivals",
+            }
+        )
+
+    total_avail = avail.count()
+    if total_avail >= 6:
+        promos.append(
+            {
+                "key": "new_collection",
+                "title": "New Collection",
+                "subtitle": "Explore the latest",
+                "kind": "new_collection",
+            }
+        )
+
+    return promos
+
+
 def list_products(
     db: Session,
     shop_id: int,
@@ -99,6 +160,8 @@ def list_products(
     brand: str | None = None,
     price_min: float | None = None,
     price_max: float | None = None,
+    discounted: bool = False,
+    new_within_days: int | None = None,
 ) -> ProductPage:
     """`availability` groups the 3 statuses the way a customer thinks about
     them, not the way the shop-owner dashboard filters them: "available"
@@ -136,6 +199,11 @@ def list_products(
         query = query.filter(Product.price >= price_min)
     if price_max is not None:
         query = query.filter(Product.price <= price_max)
+    if discounted:
+        query = query.filter(Product.discount_percent.isnot(None), Product.discount_percent > 0)
+    if new_within_days is not None and new_within_days > 0:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=new_within_days)
+        query = query.filter(Product.created_at >= cutoff)
 
     total = query.count()
 

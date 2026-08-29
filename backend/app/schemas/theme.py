@@ -10,7 +10,7 @@ the public catalog API and applied by the frontend as CSS variables.
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.services.theme import HEX_RE, PRESETS
+from app.services.theme import FONT_PAIRS, HEX_RE, PRESETS
 
 
 class ThemePalette(BaseModel):
@@ -41,6 +41,8 @@ class ThemeConfig(BaseModel):
     palette: ThemePalette = Field(default_factory=ThemePalette)
     hero: ThemeHero = Field(default_factory=ThemeHero)
     splash: ThemeSplash = Field(default_factory=ThemeSplash)
+    # Optional heading+body font pairing override; None = use the preset's fonts.
+    font_pair: str | None = None
 
     @field_validator("preset")
     @classmethod
@@ -48,6 +50,15 @@ class ThemeConfig(BaseModel):
         if v not in PRESETS:
             raise ValueError(
                 f"Unknown theme preset '{v}'. Choose one of: {', '.join(sorted(PRESETS))}."
+            )
+        return v
+
+    @field_validator("font_pair")
+    @classmethod
+    def _known_font_pair(cls, v: str | None) -> str | None:
+        if v is not None and v not in FONT_PAIRS:
+            raise ValueError(
+                f"Unknown font pairing '{v}'. Choose one of: {', '.join(sorted(FONT_PAIRS))}."
             )
         return v
 
@@ -79,3 +90,10 @@ class ThemePresetInfo(BaseModel):
     accent: str
     surface_bg: str
     heading_font: str
+
+
+class FontPairInfo(BaseModel):
+    key: str
+    label: str
+    heading_font: str
+    body_font: str

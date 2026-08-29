@@ -43,6 +43,7 @@ from app.schemas.public import (
     PublicProductImage,
     PublicProductListItem,
     PublicProductPage,
+    PublicPromo,
     PublicShop,
     PublicShopResponse,
 )
@@ -130,6 +131,7 @@ def get_shop_catalog(
         ),
         categories=[_to_public_category(category) for category in categories],
         theme=ResolvedTheme(**theme_service.resolve_theme(shop.theme)),
+        promos=[PublicPromo(**p) for p in catalog_service.get_promos(db, shop.id)],
     )
 
 
@@ -150,6 +152,8 @@ def list_shop_products(
     brand: str | None = Query(default=None, max_length=255),
     price_min: float | None = Query(default=None, ge=0),
     price_max: float | None = Query(default=None, ge=0),
+    discounted: bool = Query(default=False),
+    new_within_days: int | None = Query(default=None, ge=1, le=90),
     db: Session = Depends(get_db),
     anon_session_id: str | None = Header(default=None, alias="X-Anon-Session-Id", max_length=64),
 ) -> PublicProductPage:
@@ -173,6 +177,8 @@ def list_shop_products(
         brand=brand,
         price_min=price_min,
         price_max=price_max,
+        discounted=discounted,
+        new_within_days=new_within_days,
     )
 
     # Best-effort, anonymous analytics -- a search and/or a category browse

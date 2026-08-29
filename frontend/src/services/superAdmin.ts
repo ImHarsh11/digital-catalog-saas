@@ -1,6 +1,6 @@
 import { api } from './api';
 import type { SuperAdminDashboardStats } from '@/types/dashboard';
-import type { ThemeConfig, ThemePresetInfo } from '@/types/theme';
+import type { FontPairInfo, ThemeConfig, ThemePresetInfo } from '@/types/theme';
 import type {
   BillingPlanInfo,
   InvoiceItem,
@@ -112,6 +112,27 @@ export async function updateShopTheme(
     `/api/super-admin/shops/${shopId}/theme`,
     config,
   );
+  return data;
+}
+
+export async function listFontPairs(): Promise<FontPairInfo[]> {
+  const { data } = await api.get<FontPairInfo[]>('/api/super-admin/font-pairs');
+  return data;
+}
+
+export async function uploadShopLogo(shopId: number, file: File): Promise<ShopDetailResponse> {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await api.post<ShopDetailResponse>(
+    `/api/super-admin/shops/${shopId}/logo`,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return data;
+}
+
+export async function deleteShopLogo(shopId: number): Promise<ShopDetailResponse> {
+  const { data } = await api.delete<ShopDetailResponse>(`/api/super-admin/shops/${shopId}/logo`);
   return data;
 }
 

@@ -17,12 +17,20 @@ export interface ResolvedTheme {
   card_radius: string;
 }
 
+export interface FontPairInfo {
+  key: string;
+  label: string;
+  heading_font: string;
+  body_font: string;
+}
+
 export interface ThemeConfig {
   version: number;
   preset: string;
   palette: { primary?: string | null; accent?: string | null };
   hero: { image_url?: string | null; tagline?: string | null };
   splash: { enabled?: boolean | null };
+  font_pair?: string | null;
 }
 
 export interface ThemePresetInfo {

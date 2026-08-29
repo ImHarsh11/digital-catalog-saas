@@ -23,6 +23,8 @@ export interface PublicProductFilters {
   brand?: string;
   priceMin?: number;
   priceMax?: number;
+  discounted?: boolean;
+  newWithinDays?: number;
 }
 
 export async function getShopCatalog(shopSlug: string): Promise<PublicShopResponse> {
@@ -45,6 +47,8 @@ export async function listShopProducts(
   if (filters.brand) params.brand = filters.brand;
   if (filters.priceMin !== undefined) params.price_min = String(filters.priceMin);
   if (filters.priceMax !== undefined) params.price_max = String(filters.priceMax);
+  if (filters.discounted) params.discounted = 'true';
+  if (filters.newWithinDays !== undefined) params.new_within_days = String(filters.newWithinDays);
   const { data } = await publicApi.get<PublicProductPage>(`/api/public/shops/${shopSlug}/products`, { params });
   return data;
 }

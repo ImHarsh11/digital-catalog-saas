@@ -48,6 +48,8 @@ export default function AppRoutes() {
       {/* Customer catalog -- no login, no ProtectedRoute wrapper. */}
       <Route path="/shop/:shopSlug" element={<ShopCatalogPage />} />
       <Route path="/shop/:shopSlug/product/:productId" element={<ProductDetailPage />} />
+      <Route path="/shop/:shopSlug/my-choice" element={<MySelectionPage />} />
+      {/* legacy path kept so older links/QRs still resolve */}
       <Route path="/shop/:shopSlug/selection" element={<MySelectionPage />} />
 
       <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>

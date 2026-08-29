@@ -175,6 +175,7 @@ export default function ShopDetailPage() {
           <ThemeTab
             shopId={shopId}
             shopSlug={shop.slug}
+            logoUrl={shop.logo_url}
             themeConfig={themeConfig}
             themeResolved={themeResolved}
             onSaved={() => {

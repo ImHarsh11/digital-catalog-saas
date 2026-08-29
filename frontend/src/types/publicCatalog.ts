@@ -18,10 +18,20 @@ export interface PublicShop {
   website: string | null;
 }
 
+export type PromoKind = 'on_sale' | 'new_arrivals' | 'new_collection';
+
+export interface PublicPromo {
+  key: string;
+  title: string;
+  subtitle: string;
+  kind: PromoKind;
+}
+
 export interface PublicShopResponse {
   shop: PublicShop;
   categories: PublicCategory[];
   theme: ResolvedTheme;
+  promos: PublicPromo[];
 }
 
 export interface PublicProductImage {

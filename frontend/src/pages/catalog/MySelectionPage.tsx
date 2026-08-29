@@ -60,7 +60,7 @@ export default function MySelectionPage() {
           <div className="flex items-center gap-2">
             <Heart className="h-5 w-5" style={{ color: 'var(--catalog-primary)' }} />
             <h1 className="text-xl font-semibold" style={{ fontFamily: 'var(--catalog-heading-font)' }}>
-              My Selection
+              My Choice
             </h1>
           </div>
 
@@ -167,7 +167,7 @@ export default function MySelectionPage() {
                       onClick={() => remove.mutate(product.id)}
                       className="h-8 w-8 shrink-0 self-start rounded-full"
                       style={{ color: 'var(--catalog-ink-muted)' }}
-                      aria-label="Remove from selection"
+                      aria-label="Remove from My Choice"
                     >
                       <Trash2 className="mx-auto h-4 w-4" />
                     </button>
