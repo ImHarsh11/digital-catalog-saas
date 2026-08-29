@@ -1,6 +1,8 @@
 import { api } from './api';
 import type { SuperAdminDashboardStats } from '@/types/dashboard';
 import type {
+  ShopBillingDetail,
+  ShopBillingUpdateInput,
   ShopCreateInput,
   ShopCreateResponse,
   ShopDetail,
@@ -38,6 +40,17 @@ export async function setShopStatus(shopId: number, isActive: boolean): Promise<
   const { data } = await api.patch<ShopDetail>(`/api/super-admin/shops/${shopId}/status`, {
     is_active: isActive,
   });
+  return data;
+}
+
+export async function updateShopBilling(
+  shopId: number,
+  payload: ShopBillingUpdateInput,
+): Promise<ShopBillingDetail> {
+  const { data } = await api.patch<ShopBillingDetail>(
+    `/api/super-admin/shops/${shopId}/billing`,
+    payload,
+  );
   return data;
 }
 

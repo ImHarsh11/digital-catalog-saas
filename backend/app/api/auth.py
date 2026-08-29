@@ -12,7 +12,7 @@ from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.me import MeResponse
 from app.schemas.shop import ShopBrief
 from app.schemas.user import UserRead
-from app.services.trial import trial_days_remaining, trial_status_label
+from app.services.billing import lifecycle_label, trial_days_remaining
 from app.utils.rate_limit import limiter
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -50,10 +50,10 @@ def get_me(current_user: User = Depends(get_current_user)) -> MeResponse:
             name=shop.name,
             slug=shop.slug,
             is_active=shop.is_active,
-            subscription_status=shop.subscription_status,
-            trial_end_date=shop.trial_end_date,
+            subscription_status=shop.billing.status,
+            trial_end_date=shop.billing.trial_end_date,
             trial_days_remaining=trial_days_remaining(shop),
-            trial_status_label=trial_status_label(shop),
+            trial_status_label=lifecycle_label(shop),
         )
 
     return MeResponse(user=UserRead.model_validate(current_user), shop=shop_brief)

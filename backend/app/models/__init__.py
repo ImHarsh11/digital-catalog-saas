@@ -20,6 +20,7 @@ from app.models.product import Product
 from app.models.product_image import ProductImage
 from app.models.product_like import ProductLike
 from app.models.shop import Shop
+from app.models.shop_billing import ShopBilling
 from app.models.user import User
 
 __all__ = [
@@ -34,6 +35,7 @@ __all__ = [
     "ProductLike",
     "ProductStatus",
     "Shop",
+    "ShopBilling",
     "SubscriptionStatus",
     "User",
     "UserRole",

@@ -15,9 +15,9 @@ from app.models.catalog_activity import CatalogActivity
 from app.models.enums import CatalogAction, ProductStatus, SubscriptionStatus, UserRole
 from app.models.product import Product
 from app.models.shop import Shop
+from app.models.shop_billing import ShopBilling
 from app.models.user import User
-from app.schemas.shop import ShopCreate, ShopUpdate
-from app.services.trial import is_trial_active, is_trial_expired
+from app.schemas.shop import ShopBillingUpdate, ShopCreate, ShopUpdate
 from app.utils.slugify import slugify
 
 TRIAL_LENGTH_DAYS = 14
@@ -63,6 +63,7 @@ def create_shop_with_owner(db: Session, payload: ShopCreate) -> tuple[Shop, User
         raise OwnerEmailTakenError(payload.owner_email)
 
     today = date.today()
+    trial_days = getattr(payload, "trial_days", None) or TRIAL_LENGTH_DAYS
     shop = Shop(
         name=payload.name,
         slug=slug,
@@ -74,11 +75,11 @@ def create_shop_with_owner(db: Session, payload: ShopCreate) -> tuple[Shop, User
         website=payload.website,
         is_active=True,
         trial_start_date=today,
-        trial_end_date=today + timedelta(days=TRIAL_LENGTH_DAYS),
+        trial_end_date=today + timedelta(days=trial_days),
         subscription_status=SubscriptionStatus.TRIAL,
     )
     db.add(shop)
-    db.flush()  # populates shop.id for the owner's FK
+    db.flush()  # populates shop.id (and shop_billing.shop_id) for the owner's FK
 
     owner = User(
         name=payload.owner_name,
@@ -106,6 +107,18 @@ def update_shop(db: Session, shop: Shop, payload: ShopUpdate) -> Shop:
                 activity_metadata={"fields": sorted(changes.keys())},
             )
         )
+    db.flush()
+    return shop
+
+
+def update_billing(db: Session, shop: Shop, payload: ShopBillingUpdate) -> Shop:
+    """Manual billing adjustment (Super Admin, pre-Razorpay). Only the
+    fields present in the payload are changed."""
+    if shop.billing is None:
+        shop.billing = ShopBilling(shop_id=shop.id)
+    changes = payload.model_dump(exclude_unset=True)
+    for field, value in changes.items():
+        setattr(shop.billing, field, value)
     db.flush()
     return shop
 
@@ -174,32 +187,3 @@ def get_recent_activity(db: Session, shop_id: int, limit: int = 20) -> list[Cata
         .limit(limit)
         .all()
     )
-
-
-def get_dashboard_counts(db: Session) -> dict[str, int]:
-    total_shops = db.query(func.count(Shop.id)).scalar() or 0
-    active_shops = db.query(func.count(Shop.id)).filter(Shop.is_active.is_(True)).scalar() or 0
-
-    # Trial-status shops only -- a shop that's since gone ACTIVE/SUSPENDED
-    # isn't counted as an "expired trial" even if its trial_end_date has
-    # long since passed.
-    trial_status_shops = (
-        db.query(Shop).filter(Shop.subscription_status == SubscriptionStatus.TRIAL).all()
-    )
-    trial_shops = sum(1 for shop in trial_status_shops if is_trial_active(shop))
-    expired_trials = sum(1 for shop in trial_status_shops if is_trial_expired(shop))
-
-    total_products = db.query(func.count(Product.id)).scalar() or 0
-    week_ago = datetime.utcnow() - timedelta(days=7)
-    products_this_week = (
-        db.query(func.count(Product.id)).filter(Product.created_at >= week_ago).scalar() or 0
-    )
-
-    return {
-        "total_shops": total_shops,
-        "active_shops": active_shops,
-        "trial_shops": trial_shops,
-        "expired_trials": expired_trials,
-        "total_products": total_products,
-        "products_added_this_week": products_this_week,
-    }

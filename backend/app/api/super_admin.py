@@ -1,7 +1,9 @@
-"""Super Admin endpoints: shop CRUD, activation, dashboard stats.
+"""Super Admin endpoints: shop lifecycle, manual billing, activation.
 
-Every route in this router requires the SUPER_ADMIN role, enforced once at
-the router level (`dependencies=[...]`) rather than repeated per-endpoint.
+Every route requires the SUPER_ADMIN role, enforced once at the router
+level. After the role redesign the Super Admin owns tenant lifecycle and
+revenue only -- no catalog engagement data (product views, searches,
+sales, activity feed) is exposed here; that belongs to the shop owner.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,9 +15,10 @@ from app.auth.dependencies import require_role
 from app.database.session import get_db
 from app.models.enums import UserRole
 from app.models.shop import Shop
-from app.schemas.activity import RecentActivityItem
 from app.schemas.dashboard import SuperAdminDashboardStats
 from app.schemas.shop import (
+    ShopBillingDetail,
+    ShopBillingUpdate,
     ShopCreate,
     ShopCreateResponse,
     ShopDetail,
@@ -26,9 +29,10 @@ from app.schemas.shop import (
     ShopUpdate,
 )
 from app.schemas.user import UserRead
+from app.services import admin_metrics as metrics_service
+from app.services import billing as billing_service
 from app.services import qr as qr_service
 from app.services import shop as shop_service
-from app.services.trial import trial_days_remaining, trial_status_label
 
 router = APIRouter(
     prefix="/api/super-admin",
@@ -49,29 +53,19 @@ def _to_list_item(shop: Shop, product_count: int) -> ShopListItem:
         name=shop.name,
         slug=shop.slug,
         is_active=shop.is_active,
-        subscription_status=shop.subscription_status,
-        trial_end_date=shop.trial_end_date,
-        trial_days_remaining=trial_days_remaining(shop),
-        trial_status_label=trial_status_label(shop),
+        subscription_status=shop.billing.status,
+        trial_end_date=shop.billing.trial_end_date,
+        trial_days_remaining=billing_service.trial_days_remaining(shop),
+        trial_status_label=billing_service.lifecycle_label(shop),
         owner=_owner_brief(shop),
         product_count=product_count,
         created_at=shop.created_at,
     )
 
 
-def _to_detail(shop: Shop, stats: dict[str, int]) -> ShopDetail:
+def _to_detail(shop: Shop, product_count: int) -> ShopDetail:
     return ShopDetail(
-        id=shop.id,
-        name=shop.name,
-        slug=shop.slug,
-        is_active=shop.is_active,
-        subscription_status=shop.subscription_status,
-        trial_end_date=shop.trial_end_date,
-        trial_days_remaining=trial_days_remaining(shop),
-        trial_status_label=trial_status_label(shop),
-        owner=_owner_brief(shop),
-        product_count=stats["product_count"],
-        created_at=shop.created_at,
+        **_to_list_item(shop, product_count).model_dump(),
         description=shop.description,
         phone=shop.phone,
         address=shop.address,
@@ -79,10 +73,20 @@ def _to_detail(shop: Shop, stats: dict[str, int]) -> ShopDetail:
         website=shop.website,
         logo_url=shop.logo_url,
         updated_at=shop.updated_at,
-        products_available=stats["products_available"],
-        products_sold=stats["products_sold"],
-        products_out_of_stock=stats["products_out_of_stock"],
-        products_added_this_week=stats["products_added_this_week"],
+    )
+
+
+def _billing_detail(shop: Shop) -> ShopBillingDetail:
+    b = shop.billing
+    return ShopBillingDetail(
+        status=b.status,
+        trial_start_date=b.trial_start_date,
+        trial_end_date=b.trial_end_date,
+        paid_until=b.paid_until,
+        grace_until=b.grace_until,
+        days_remaining=billing_service.trial_days_remaining(shop),
+        lifecycle_label=billing_service.lifecycle_label(shop),
+        is_catalog_live=billing_service.is_catalog_live(shop),
     )
 
 
@@ -95,7 +99,7 @@ def _get_shop_or_404(db: Session, shop_id: int) -> Shop:
 
 @router.get("/dashboard", response_model=SuperAdminDashboardStats)
 def get_dashboard(db: Session = Depends(get_db)) -> SuperAdminDashboardStats:
-    return SuperAdminDashboardStats(**shop_service.get_dashboard_counts(db))
+    return SuperAdminDashboardStats(**metrics_service.get_dashboard(db))
 
 
 @router.get("/shops", response_model=list[ShopListItem])
@@ -126,43 +130,27 @@ def create_shop(payload: ShopCreate, db: Session = Depends(get_db)) -> ShopCreat
         db.rollback()
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except IntegrityError as exc:
-        # Fallback for a race condition slipping past the pre-checks above.
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Could not create the shop -- it conflicts with an existing shop or account.",
         ) from exc
 
-    stats = shop_service.get_shop_stats(db, shop.id)
-    return ShopCreateResponse(shop=_to_detail(shop, stats), owner=UserRead.model_validate(owner))
+    db.refresh(shop)
+    return ShopCreateResponse(shop=_to_detail(shop, 0), owner=UserRead.model_validate(owner))
 
 
 @router.get("/shops/{shop_id}", response_model=ShopDetailResponse)
 def get_shop_detail(shop_id: int, db: Session = Depends(get_db)) -> ShopDetailResponse:
     shop = _get_shop_or_404(db, shop_id)
-    stats = shop_service.get_shop_stats(db, shop.id)
-    activities = shop_service.get_recent_activity(db, shop.id)
-    recent_activity = [
-        RecentActivityItem(
-            id=activity.id,
-            action=activity.action,
-            product_id=activity.product_id,
-            product_name=activity.product.name if activity.product else None,
-            user_id=activity.user_id,
-            user_name=activity.user.name if activity.user else None,
-            created_at=activity.created_at,
-        )
-        for activity in activities
-    ]
-    return ShopDetailResponse(shop=_to_detail(shop, stats), recent_activity=recent_activity)
+    product_count = shop_service.get_product_counts_by_shop(db).get(shop.id, 0)
+    return ShopDetailResponse(shop=_to_detail(shop, product_count), billing=_billing_detail(shop))
 
 
 @router.get("/shops/{shop_id}/qr-code", response_class=Response)
 def get_shop_qr_code(shop_id: int, db: Session = Depends(get_db)) -> Response:
     """PNG QR code encoding this shop's public catalog URL, for a Super
-    Admin to print/display when onboarding a new shop. Not cached -- it's
-    cheap to regenerate and the shop's slug can change (see `update_shop`).
-    """
+    Admin to print/display when onboarding a new shop."""
     shop = _get_shop_or_404(db, shop_id)
     png_bytes = qr_service.generate_shop_qr_png(shop.slug)
     return Response(
@@ -177,8 +165,9 @@ def update_shop(shop_id: int, payload: ShopUpdate, db: Session = Depends(get_db)
     shop = _get_shop_or_404(db, shop_id)
     shop = shop_service.update_shop(db, shop, payload)
     db.commit()
-    stats = shop_service.get_shop_stats(db, shop.id)
-    return _to_detail(shop, stats)
+    db.refresh(shop)
+    product_count = shop_service.get_product_counts_by_shop(db).get(shop.id, 0)
+    return _to_detail(shop, product_count)
 
 
 @router.patch("/shops/{shop_id}/status", response_model=ShopDetail)
@@ -188,5 +177,19 @@ def update_shop_status(
     shop = _get_shop_or_404(db, shop_id)
     shop = shop_service.set_shop_active(db, shop, payload.is_active)
     db.commit()
-    stats = shop_service.get_shop_stats(db, shop.id)
-    return _to_detail(shop, stats)
+    db.refresh(shop)
+    product_count = shop_service.get_product_counts_by_shop(db).get(shop.id, 0)
+    return _to_detail(shop, product_count)
+
+
+@router.patch("/shops/{shop_id}/billing", response_model=ShopBillingDetail)
+def update_shop_billing(
+    shop_id: int, payload: ShopBillingUpdate, db: Session = Depends(get_db)
+) -> ShopBillingDetail:
+    """Manual billing controls until Razorpay lands (Phase 5): set the
+    lifecycle status, extend a trial, or record a paid-through date."""
+    shop = _get_shop_or_404(db, shop_id)
+    shop_service.update_billing(db, shop, payload)
+    db.commit()
+    db.refresh(shop)
+    return _billing_detail(shop)

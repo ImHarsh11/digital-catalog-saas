@@ -104,7 +104,7 @@ def verify_shop_ownership(current_user: User, resource_shop_id: int) -> None:
 
 def require_shop_access(shop_id: int, current_user: User = Depends(get_current_user)) -> User:
     """Router-level dependency for every `/api/shops/{shop_id}/...` endpoint
-    (categories, products, images, dashboard, profile -- Phase 4).
+    (categories, products, images, profile).
 
     FastAPI resolves `shop_id` from the path for a dependency the same way
     it does for an endpoint, so this can sit in an APIRouter's
@@ -113,4 +113,22 @@ def require_shop_access(shop_id: int, current_user: User = Depends(get_current_u
     passes for their own shop_id, a super admin always passes.
     """
     verify_shop_ownership(current_user, shop_id)
+    return current_user
+
+
+def require_shop_owner_self(shop_id: int, current_user: User = Depends(get_current_user)) -> User:
+    """Stricter than `require_shop_access`: the caller must be the SHOP_OWNER
+    of *this* shop. A Super Admin does NOT pass.
+
+    Used for endpoints that expose a shop's own customer-engagement data --
+    dashboard counts, analytics, the activity feed. After the role redesign
+    the Super Admin owns tenant lifecycle and billing only; catalog
+    engagement belongs to the shop owner alone. 404 (not 403) for the same
+    id-non-disclosure reason as `verify_shop_ownership`.
+    """
+    if current_user.role != UserRole.SHOP_OWNER or current_user.shop_id != shop_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resource not found.",
+        )
     return current_user

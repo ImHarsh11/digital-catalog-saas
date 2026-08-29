@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Store } from 'lucide-react';
 import { listShops, setShopStatus } from '@/services/superAdmin';
 import { getApiErrorMessage } from '@/utils/apiError';
-import { shopStatusBadge, trialBadgeTone } from '@/utils/shopStatus';
+import { lifecycleTone, shopStatusBadge } from '@/utils/shopStatus';
 import Spinner from '@/components/Spinner';
 import ErrorState from '@/components/ErrorState';
 import Badge from '@/components/Badge';
@@ -59,7 +59,7 @@ export default function ShopsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-neutral-900">Shops</h1>
-          <p className="mt-1 text-sm text-neutral-500">Every shop on the platform, and its trial status.</p>
+          <p className="mt-1 text-sm text-neutral-500">Every shop on the platform, and its billing state.</p>
         </div>
         <button
           type="button"
@@ -110,7 +110,7 @@ export default function ShopsPage() {
                 <th className="px-4 py-3">Owner</th>
                 <th className="px-4 py-3">Products</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Trial Ends</th>
+                <th className="px-4 py-3">Billing</th>
                 <th className="px-4 py-3">Created</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
@@ -137,9 +137,7 @@ export default function ShopsPage() {
                       <Badge tone={status.tone}>{status.label}</Badge>
                     </td>
                     <td className="px-4 py-3">
-                      <Badge tone={trialBadgeTone(shop.trial_status_label, shop.trial_days_remaining)}>
-                        {shop.trial_status_label}
-                      </Badge>
+                      <Badge tone={lifecycleTone(shop)}>{shop.trial_status_label}</Badge>
                     </td>
                     <td className="px-4 py-3 text-neutral-500">
                       {new Date(shop.created_at).toLocaleDateString()}

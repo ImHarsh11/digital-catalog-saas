@@ -22,3 +22,4 @@ backend/uploads/
 # --- Editors ---
 .vscode/
 .idea/
+.claude/

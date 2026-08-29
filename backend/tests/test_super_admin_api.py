@@ -1,9 +1,10 @@
-"""Integration tests for the Super Admin API (Phase 3).
+"""Integration tests for the Super Admin API.
 
 Covers: role enforcement on every route, shop creation (auto trial +
-owner account), listing, detail (+ recent activity), profile update,
-activate/deactivate, dashboard stats, and (Phase 6) shop QR-code
-generation.
+owner account), listing, detail + billing panel, profile update, manual
+billing adjustment, activate/deactivate, the lifecycle/ops dashboard, and
+shop QR-code generation. After the role redesign the Super Admin sees no
+catalog-engagement data here.
 """
 
 from datetime import date, timedelta
@@ -256,15 +257,11 @@ def test_get_shop_detail_not_found(client, super_admin):
     assert resp.status_code == 404
 
 
-def test_get_shop_detail_stats_and_empty_activity(
+def test_get_shop_detail_returns_profile_and_billing(
     client, db_session, super_admin, shop_a, owner_a
 ):
     category_id = _make_category(db_session, shop_a.id, "Sarees")
     _make_product(db_session, shop_a.id, category_id, "AVAIL", status=ProductStatus.AVAILABLE)
-    _make_product(db_session, shop_a.id, category_id, "SOLD1", status=ProductStatus.SOLD)
-    _make_product(
-        db_session, shop_a.id, category_id, "OOS1", status=ProductStatus.OUT_OF_STOCK
-    )
     db_session.flush()
 
     headers = auth_headers(client, "admin@test.com", "Admin123!")
@@ -273,25 +270,52 @@ def test_get_shop_detail_stats_and_empty_activity(
     body = resp.json()
 
     shop = body["shop"]
-    assert shop["product_count"] == 3
-    assert shop["products_available"] == 1
-    assert shop["products_sold"] == 1
-    assert shop["products_out_of_stock"] == 1
-    assert shop["products_added_this_week"] == 3
-    assert body["recent_activity"] == []
+    assert shop["slug"] == "shop-a"
+    assert shop["product_count"] == 1
+    assert shop["owner"]["email"] == "ownera@test.com"
+    # No catalog-engagement data leaks into the Super Admin view any more.
+    for gone in ("products_available", "products_sold", "products_out_of_stock"):
+        assert gone not in shop
+    assert "recent_activity" not in body
+
+    billing = body["billing"]
+    assert billing["status"] == "TRIAL"
+    assert billing["is_catalog_live"] is True
+    assert billing["days_remaining"] == 14
 
 
-def test_shop_update_appears_in_recent_activity(client, super_admin, shop_a):
+def test_manual_billing_adjustment(client, super_admin, shop_a):
     headers = auth_headers(client, "admin@test.com", "Admin123!")
-    put_resp = client.put(
-        f"/api/super-admin/shops/{shop_a.id}", json={"city": "Chennai"}, headers=headers
+    new_end = (date.today() + timedelta(days=30)).isoformat()
+    resp = client.patch(
+        f"/api/super-admin/shops/{shop_a.id}/billing",
+        json={"status": "ACTIVE", "trial_end_date": new_end},
+        headers=headers,
     )
-    assert put_resp.status_code == 200
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "ACTIVE"
+    assert body["trial_end_date"] == new_end
+    assert body["is_catalog_live"] is True
 
-    detail_resp = client.get(f"/api/super-admin/shops/{shop_a.id}", headers=headers)
-    activity = detail_resp.json()["recent_activity"]
-    assert len(activity) == 1
-    assert activity[0]["action"] == "SHOP_UPDATED"
+
+def test_manual_billing_can_suspend_a_shop(client, super_admin, shop_a):
+    headers = auth_headers(client, "admin@test.com", "Admin123!")
+    resp = client.patch(
+        f"/api/super-admin/shops/{shop_a.id}/billing",
+        json={"status": "SUSPENDED"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["is_catalog_live"] is False
+
+
+def test_billing_adjustment_rejects_shop_owner(client, owner_a, shop_a):
+    headers = auth_headers(client, "ownera@test.com", "OwnerA123!")
+    resp = client.patch(
+        f"/api/super-admin/shops/{shop_a.id}/billing", json={"status": "ACTIVE"}, headers=headers
+    )
+    assert resp.status_code == 403
 
 
 # --- Update shop ---------------------------------------------------------
@@ -360,7 +384,7 @@ def test_status_update_not_found(client, super_admin):
 # --- Dashboard stats -------------------------------------------------------
 
 
-def test_dashboard_counts(client, db_session, super_admin, shop_a, shop_b):
+def test_dashboard_lifecycle_stats(client, db_session, super_admin, shop_a, shop_b):
     # shop_a and shop_b are both active, live 14-day trials (from fixtures).
     expired_shop = Shop(
         name="Expired Trial Shop",
@@ -370,20 +394,13 @@ def test_dashboard_counts(client, db_session, super_admin, shop_a, shop_b):
         trial_end_date=date.today() - timedelta(days=16),
         subscription_status=SubscriptionStatus.TRIAL,
     )
-    inactive_shop = Shop(
-        name="Deactivated Shop",
-        slug="deactivated-shop",
+    suspended_shop = Shop(
+        name="Suspended Shop",
+        slug="suspended-shop",
         is_active=False,
-        trial_start_date=date.today(),
-        trial_end_date=date.today() + timedelta(days=14),
-        subscription_status=SubscriptionStatus.TRIAL,
+        subscription_status=SubscriptionStatus.SUSPENDED,
     )
-    db_session.add_all([expired_shop, inactive_shop])
-    db_session.flush()
-
-    category_id = _make_category(db_session, shop_a.id, "Sarees")
-    _make_product(db_session, shop_a.id, category_id, "P1")
-    _make_product(db_session, shop_a.id, category_id, "P2")
+    db_session.add_all([expired_shop, suspended_shop])
     db_session.flush()
 
     headers = auth_headers(client, "admin@test.com", "Admin123!")
@@ -391,12 +408,37 @@ def test_dashboard_counts(client, db_session, super_admin, shop_a, shop_b):
     assert resp.status_code == 200
     stats = resp.json()
 
-    assert stats["total_shops"] == 4  # shop_a, shop_b, expired_shop, inactive_shop
-    assert stats["active_shops"] == 3  # all but inactive_shop
-    assert stats["trial_shops"] == 3  # shop_a, shop_b, inactive_shop (still within 14 days)
-    assert stats["expired_trials"] == 1  # expired_shop
-    assert stats["total_products"] == 2
-    assert stats["products_added_this_week"] == 2
+    assert stats["total_shops"] == 4
+    # Only shop_a and shop_b have a live catalog right now.
+    assert stats["live_catalogs"] == 2
+    assert stats["by_status"]["TRIAL"] == 3
+    assert stats["by_status"]["SUSPENDED"] == 1
+    assert stats["new_shops_this_week"] == 4
+    assert stats["revenue_pending"] is True
+    assert stats["mrr"] is None
+    # No catalog stats on the Super Admin dashboard any more.
+    assert "total_products" not in stats
+
+
+def test_dashboard_flags_trials_expiring_soon(client, db_session, super_admin, shop_a):
+    soon = Shop(
+        name="Ending Soon",
+        slug="ending-soon",
+        is_active=True,
+        trial_start_date=date.today() - timedelta(days=11),
+        trial_end_date=date.today() + timedelta(days=3),
+        subscription_status=SubscriptionStatus.TRIAL,
+    )
+    db_session.add(soon)
+    db_session.flush()
+
+    headers = auth_headers(client, "admin@test.com", "Admin123!")
+    stats = client.get("/api/super-admin/dashboard", headers=headers).json()
+    expiring = {row["slug"]: row for row in stats["trials_expiring_soon"]}
+    assert "ending-soon" in expiring
+    assert expiring["ending-soon"]["days_remaining"] == 3
+    # shop_a has 14 days left -- outside the 7-day window.
+    assert "shop-a" not in expiring
 
 
 # --- QR code (Phase 6) ------------------------------------------------------

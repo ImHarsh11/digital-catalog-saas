@@ -1,25 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Clock, Package, Plus, Store, Timer, TrendingUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, IndianRupee, MoonStar, Plus, Store } from 'lucide-react';
 import { getDashboardStats } from '@/services/superAdmin';
 import { getApiErrorMessage } from '@/utils/apiError';
 import Spinner from '@/components/Spinner';
 import ErrorState from '@/components/ErrorState';
+import Badge from '@/components/Badge';
 import type { SuperAdminDashboardStats } from '@/types/dashboard';
-import type { ComponentType } from 'react';
 
-const STAT_CARDS: Array<{
-  key: keyof SuperAdminDashboardStats;
-  label: string;
-  icon: ComponentType<{ className?: string }>;
-}> = [
-  { key: 'total_shops', label: 'Total Shops', icon: Store },
-  { key: 'active_shops', label: 'Active Shops', icon: CheckCircle2 },
-  { key: 'trial_shops', label: 'Trial Shops', icon: Clock },
-  { key: 'expired_trials', label: 'Expired Trials', icon: Timer },
-  { key: 'total_products', label: 'Total Products', icon: Package },
-  { key: 'products_added_this_week', label: 'Added This Week', icon: TrendingUp },
-];
+const STATUS_ORDER = ['TRIAL', 'ACTIVE', 'PAST_DUE', 'EXPIRED', 'SUSPENDED', 'CANCELLED'];
+const STATUS_LABEL: Record<string, string> = {
+  TRIAL: 'Trial',
+  ACTIVE: 'Active',
+  PAST_DUE: 'Past due',
+  EXPIRED: 'Expired',
+  SUSPENDED: 'Suspended',
+  CANCELLED: 'Cancelled',
+};
 
 export default function DashboardPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -32,7 +29,9 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-neutral-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-neutral-500">An overview of every shop on the platform.</p>
+          <p className="mt-1 text-sm text-neutral-500">
+            Tenant lifecycle and billing across every shop.
+          </p>
         </div>
         <Link
           to="/super-admin/shops"
@@ -55,19 +54,169 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {data && (
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {STAT_CARDS.map(({ key, label, icon: Icon }) => (
-            <div key={key} className="rounded-xl border border-neutral-200 bg-white p-4">
-              <div className="flex items-center gap-2 text-neutral-400">
-                <Icon className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
-              </div>
-              <p className="mt-2 text-2xl font-semibold text-neutral-900">{data[key]}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      {data && <DashboardBody data={data} />}
     </div>
   );
+}
+
+function DashboardBody({ data }: { data: SuperAdminDashboardStats }) {
+  return (
+    <div className="mt-6 space-y-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard icon={<Store className="h-4 w-4" />} label="Total Shops" value={data.total_shops} />
+        <StatCard
+          icon={<CheckCircle2 className="h-4 w-4" />}
+          label="Live Catalogs"
+          value={data.live_catalogs}
+        />
+        <StatCard
+          icon={<Plus className="h-4 w-4" />}
+          label="New This Week"
+          value={data.new_shops_this_week}
+        />
+        <StatCard
+          icon={<Plus className="h-4 w-4" />}
+          label="New This Month"
+          value={data.new_shops_this_month}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <section className="rounded-xl border border-neutral-200 bg-white p-5">
+          <h2 className="text-sm font-semibold text-neutral-900">Shops by status</h2>
+          <ul className="mt-3 space-y-2">
+            {STATUS_ORDER.map((s) => (
+              <li key={s} className="flex items-center justify-between text-sm">
+                <span className="text-neutral-600">{STATUS_LABEL[s] ?? s}</span>
+                <span className="font-semibold tabular-nums text-neutral-900">
+                  {data.by_status[s] ?? 0}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-5 lg:col-span-2">
+          <div className="flex items-center gap-2 text-neutral-500">
+            <IndianRupee className="h-4 w-4" />
+            <h2 className="text-sm font-semibold">Revenue</h2>
+          </div>
+          {data.revenue_pending ? (
+            <p className="mt-3 text-sm text-neutral-500">
+              MRR, revenue, trial&nbsp;&rarr;&nbsp;paid conversion and churn appear here once
+              Razorpay billing is connected.
+            </p>
+          ) : (
+            <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <MiniStat label="MRR" value={formatMoney(data.mrr)} />
+              <MiniStat label="ARR" value={formatMoney(data.arr)} />
+              <MiniStat label="This month" value={formatMoney(data.revenue_this_month)} />
+              <MiniStat
+                label="Trial → Paid"
+                value={data.trial_to_paid_rate != null ? `${data.trial_to_paid_rate}%` : '—'}
+              />
+            </div>
+          )}
+        </section>
+      </div>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-5">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <h2 className="text-sm font-semibold text-neutral-900">Trials expiring soon</h2>
+        </div>
+        {data.trials_expiring_soon.length === 0 ? (
+          <p className="mt-3 text-sm text-neutral-400">No trials ending in the next 7 days.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-neutral-100">
+            {data.trials_expiring_soon.map((t) => (
+              <li key={t.shop_id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                <div className="min-w-0">
+                  <Link
+                    to={`/super-admin/shops/${t.shop_id}`}
+                    className="text-sm font-medium text-neutral-900 hover:text-brand-700"
+                  >
+                    {t.name}
+                  </Link>
+                  {t.owner_email && (
+                    <p className="truncate text-xs text-neutral-400">{t.owner_email}</p>
+                  )}
+                </div>
+                <Badge tone={t.expired ? 'red' : t.days_remaining <= 3 ? 'amber' : 'green'}>
+                  {t.expired
+                    ? 'Expired'
+                    : t.days_remaining === 1
+                      ? '1 day left'
+                      : `${t.days_remaining} days left`}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-5">
+        <div className="flex items-center gap-2">
+          <MoonStar className="h-4 w-4 text-neutral-400" />
+          <h2 className="text-sm font-semibold text-neutral-900">Dormant shops</h2>
+          <span className="text-xs text-neutral-400">no catalog edits in 30 days</span>
+        </div>
+        {data.dormant_shops.length === 0 ? (
+          <p className="mt-3 text-sm text-neutral-400">Every live shop has been active recently.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-neutral-100">
+            {data.dormant_shops.map((d) => (
+              <li key={d.shop_id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                <Link
+                  to={`/super-admin/shops/${d.shop_id}`}
+                  className="text-sm font-medium text-neutral-900 hover:text-brand-700"
+                >
+                  {d.name}
+                </Link>
+                <span className="text-xs text-neutral-400">
+                  {d.last_activity_at
+                    ? `last edit ${new Date(d.last_activity_at).toLocaleDateString()}`
+                    : 'never edited'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white p-4">
+      <div className="flex items-center gap-2 text-neutral-400">
+        {icon}
+        <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
+      </div>
+      <p className="mt-2 text-2xl font-semibold tabular-nums text-neutral-900">{value}</p>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">{label}</p>
+      <p className="mt-1 text-lg font-semibold tabular-nums text-neutral-900">{value}</p>
+    </div>
+  );
+}
+
+function formatMoney(value: number | null): string {
+  if (value == null) return '—';
+  return `₹${value.toLocaleString('en-IN')}`;
 }

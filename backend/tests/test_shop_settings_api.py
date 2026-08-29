@@ -52,6 +52,22 @@ def test_shop_owner_cannot_view_another_shops_dashboard(client, shop_b, owner_a)
     assert resp.status_code == 404
 
 
+def test_super_admin_cannot_view_a_shops_dashboard_or_analytics(client, shop_a, super_admin):
+    """After the role redesign, catalog-engagement data is the shop
+    owner's alone -- the Super Admin gets a 404, not the shop's numbers."""
+    headers = auth_headers(client, "admin@test.com", "Admin123!")
+    assert client.get(f"/api/shops/{shop_a.id}/dashboard", headers=headers).status_code == 404
+    assert client.get(f"/api/shops/{shop_a.id}/analytics", headers=headers).status_code == 404
+    assert client.get(f"/api/shops/{shop_a.id}/analytics/rich", headers=headers).status_code == 404
+
+
+def test_super_admin_can_still_view_a_shop_profile(client, shop_a, super_admin):
+    headers = auth_headers(client, "admin@test.com", "Admin123!")
+    resp = client.get(f"/api/shops/{shop_a.id}/profile", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["slug"] == shop_a.slug
+
+
 def test_get_and_update_profile(client, shop_a, owner_a):
     headers = _owner_a_headers(client, owner_a)
     resp = client.get(f"/api/shops/{shop_a.id}/profile", headers=headers)

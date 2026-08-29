@@ -13,10 +13,24 @@ class UserRole(str, enum.Enum):
 
 
 class SubscriptionStatus(str, enum.Enum):
+    """A shop's billing lifecycle state (stored on `shop_billing.status`).
+
+    TRIAL     -- inside the free trial window (trial_end_date in the future)
+    ACTIVE    -- a paid subscription is current
+    PAST_DUE  -- a renewal charge failed; inside the grace window, catalog
+                 stays live (added with Razorpay, Phase 5)
+    EXPIRED   -- trial ended without payment, or grace window elapsed
+    SUSPENDED -- switched off by the Super Admin, regardless of billing
+    CANCELLED -- subscription cancelled; catalog stays live until paid_until
+                 (added with Razorpay, Phase 5)
+    """
+
     TRIAL = "TRIAL"
     ACTIVE = "ACTIVE"
+    PAST_DUE = "PAST_DUE"
     EXPIRED = "EXPIRED"
     SUSPENDED = "SUSPENDED"
+    CANCELLED = "CANCELLED"
 
 
 class ProductStatus(str, enum.Enum):

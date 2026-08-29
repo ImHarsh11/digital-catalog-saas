@@ -3,7 +3,6 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.enums import SubscriptionStatus
-from app.schemas.activity import RecentActivityItem
 from app.schemas.user import UserRead
 
 _SLUG_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -34,11 +33,25 @@ class ShopOwnerBrief(BaseModel):
     email: str
 
 
+class ShopBillingDetail(BaseModel):
+    """The Super Admin's Billing tab for one shop, and the owner's own
+    read-only billing panel. Razorpay fields arrive in Phase 5."""
+
+    status: SubscriptionStatus
+    trial_start_date: date | None
+    trial_end_date: date | None
+    paid_until: date | None
+    grace_until: date | None
+    days_remaining: int
+    lifecycle_label: str
+    is_catalog_live: bool
+
+
 class ShopCreate(BaseModel):
     """Super Admin creates a shop and its owner account in one step.
 
-    A 14-day trial is started automatically -- there's no field for it
-    here, it's not something the caller controls.
+    A trial is started automatically; `trial_days` lets the onboarding flow
+    pick its length (default 14).
     """
 
     name: str = Field(min_length=1, max_length=255)
@@ -51,6 +64,7 @@ class ShopCreate(BaseModel):
     city: str | None = Field(default=None, max_length=255)
     website: str | None = Field(default=None, max_length=1024)
     logo_url: str | None = Field(default=None, max_length=1024)
+    trial_days: int = Field(default=14, ge=1, le=90)
 
     owner_name: str = Field(min_length=1, max_length=255)
     owner_email: EmailStr
@@ -82,6 +96,20 @@ class ShopStatusUpdate(BaseModel):
     is_active: bool
 
 
+class ShopBillingUpdate(BaseModel):
+    """Manual billing adjustment by the Super Admin (pre-Razorpay).
+
+    Every field is optional -- send only what changes. Setting `status` to
+    ACTIVE without a `paid_until` is allowed: it means "the admin has
+    vouched for this shop" until Phase 5 makes payment the source of truth.
+    """
+
+    status: SubscriptionStatus | None = None
+    trial_end_date: date | None = None
+    paid_until: date | None = None
+    grace_until: date | None = None
+
+
 class ShopListItem(BaseModel):
     """One row of the Super Admin shop table."""
 
@@ -99,7 +127,8 @@ class ShopListItem(BaseModel):
 
 
 class ShopDetail(ShopListItem):
-    """Full shop profile + basic catalog stats (Super Admin shop detail page)."""
+    """Full shop profile (Super Admin shop detail, and the owner's own
+    profile). Catalog stats live on the owner's /dashboard, not here."""
 
     description: str | None
     phone: str | None
@@ -108,10 +137,6 @@ class ShopDetail(ShopListItem):
     website: str | None
     logo_url: str | None
     updated_at: datetime
-    products_available: int
-    products_sold: int
-    products_out_of_stock: int
-    products_added_this_week: int
 
 
 class ShopCreateResponse(BaseModel):
@@ -121,4 +146,4 @@ class ShopCreateResponse(BaseModel):
 
 class ShopDetailResponse(BaseModel):
     shop: ShopDetail
-    recent_activity: list[RecentActivityItem]
+    billing: ShopBillingDetail

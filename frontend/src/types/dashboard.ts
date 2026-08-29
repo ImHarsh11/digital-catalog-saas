@@ -1,12 +1,36 @@
 import type { SubscriptionStatus } from './shop';
 
+export interface TrialExpiringItem {
+  shop_id: number;
+  name: string;
+  slug: string;
+  owner_email: string | null;
+  trial_end_date: string | null;
+  days_remaining: number;
+  expired: boolean;
+}
+
+export interface DormantShopItem {
+  shop_id: number;
+  name: string;
+  slug: string;
+  last_activity_at: string | null;
+}
+
 export interface SuperAdminDashboardStats {
   total_shops: number;
-  active_shops: number;
-  trial_shops: number;
-  expired_trials: number;
-  total_products: number;
-  products_added_this_week: number;
+  live_catalogs: number;
+  by_status: Record<string, number>;
+  new_shops_this_week: number;
+  new_shops_this_month: number;
+  trials_expiring_soon: TrialExpiringItem[];
+  dormant_shops: DormantShopItem[];
+  revenue_pending: boolean;
+  mrr: number | null;
+  arr: number | null;
+  revenue_this_month: number | null;
+  trial_to_paid_rate: number | null;
+  churn_this_month: number | null;
 }
 
 export interface ShopOwnerDashboardStats {

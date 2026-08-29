@@ -1,6 +1,12 @@
 import type { User } from './auth';
 
-export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED';
+export type SubscriptionStatus =
+  | 'TRIAL'
+  | 'ACTIVE'
+  | 'PAST_DUE'
+  | 'EXPIRED'
+  | 'SUSPENDED'
+  | 'CANCELLED';
 
 export interface ShopBrief {
   id: number;
@@ -41,25 +47,22 @@ export interface ShopDetail extends ShopListItem {
   website: string | null;
   logo_url: string | null;
   updated_at: string;
-  products_available: number;
-  products_sold: number;
-  products_out_of_stock: number;
-  products_added_this_week: number;
 }
 
-export interface RecentActivityItem {
-  id: number;
-  action: string;
-  product_id: number | null;
-  product_name: string | null;
-  user_id: number | null;
-  user_name: string | null;
-  created_at: string;
+export interface ShopBillingDetail {
+  status: SubscriptionStatus;
+  trial_start_date: string | null;
+  trial_end_date: string | null;
+  paid_until: string | null;
+  grace_until: string | null;
+  days_remaining: number;
+  lifecycle_label: string;
+  is_catalog_live: boolean;
 }
 
 export interface ShopDetailResponse {
   shop: ShopDetail;
-  recent_activity: RecentActivityItem[];
+  billing: ShopBillingDetail;
 }
 
 export interface ShopCreateInput {
@@ -71,9 +74,17 @@ export interface ShopCreateInput {
   city?: string;
   website?: string;
   logo_url?: string;
+  trial_days?: number;
   owner_name: string;
   owner_email: string;
   owner_password: string;
+}
+
+export interface ShopBillingUpdateInput {
+  status?: SubscriptionStatus;
+  trial_end_date?: string | null;
+  paid_until?: string | null;
+  grace_until?: string | null;
 }
 
 export interface ShopCreateResponse {

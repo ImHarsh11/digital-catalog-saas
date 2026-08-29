@@ -31,6 +31,7 @@ from app.models.customer_event import CustomerEvent
 from app.models.enums import CustomerEventType, ProductStatus
 from app.models.product import Product
 from app.models.shop import Shop
+from app.services import billing as billing_service
 
 DEFAULT_PAGE_SIZE = 24
 MAX_PAGE_SIZE = 60
@@ -54,7 +55,10 @@ def get_active_shop(db: Session, slug: str) -> Shop:
     shop = db.query(Shop).filter(Shop.slug == slug).first()
     if shop is None:
         raise ShopNotFoundError(slug)
-    if not shop.is_active:
+    # One gate: the Super Admin hasn't switched the shop off AND its billing
+    # state currently permits serving customers (trial live, paid, or in the
+    # post-payment-failure grace window). Never leaks *why*.
+    if not billing_service.is_catalog_live(shop):
         raise ShopUnavailableError(slug)
     return shop
 

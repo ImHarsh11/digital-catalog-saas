@@ -18,10 +18,13 @@ const EMPTY_FORM: ShopCreateInput = {
   address: '',
   website: '',
   description: '',
+  trial_days: 14,
   owner_name: '',
   owner_email: '',
   owner_password: '',
 };
+
+const TRIAL_OPTIONS = [7, 14, 30, 45];
 
 const inputClass =
   'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
@@ -60,7 +63,10 @@ export default function ShopFormDialog({ onClose, onCreated }: ShopFormDialogPro
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['super-admin', 'shops'] });
       queryClient.invalidateQueries({ queryKey: ['super-admin', 'dashboard'] });
-      showToast('success', `${data.shop.name} was created with a 14-day trial.`);
+      showToast(
+        'success',
+        `${data.shop.name} was created with a ${form.trial_days ?? 14}-day trial.`,
+      );
       onCreated(data.shop.id);
     },
     onError: (err) => {
@@ -85,6 +91,7 @@ export default function ShopFormDialog({ onClose, onCreated }: ShopFormDialogPro
       address: form.address || undefined,
       website: form.website || undefined,
       description: form.description || undefined,
+      trial_days: form.trial_days ?? 14,
     };
     mutation.mutate(payload);
   }
@@ -154,6 +161,19 @@ export default function ShopFormDialog({ onClose, onCreated }: ShopFormDialogPro
               rows={2}
               className={inputClass}
             />
+          </Field>
+          <Field label="Trial length" hint="The shop's catalog goes offline when the trial ends unless billing is set.">
+            <select
+              value={form.trial_days ?? 14}
+              onChange={(e) => setForm((prev) => ({ ...prev, trial_days: Number(e.target.value) }))}
+              className={inputClass}
+            >
+              {TRIAL_OPTIONS.map((d) => (
+                <option key={d} value={d}>
+                  {d} days
+                </option>
+              ))}
+            </select>
           </Field>
         </fieldset>
 
