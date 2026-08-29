@@ -54,8 +54,10 @@ export default function CategoriesPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Categories</h1>
-          <p className="mt-1 text-sm text-neutral-500">Group your products so customers can browse by type.</p>
+          <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Categories</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+            Group your products so customers can browse by type.
+          </p>
         </div>
         <button
           type="button"
@@ -80,12 +82,12 @@ export default function CategoriesPage() {
       )}
 
       {categories && categories.length === 0 && (
-        <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-neutral-300 bg-white px-6 py-14 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100">
+        <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-neutral-300 bg-white px-6 py-14 text-center dark:border-neutral-700 dark:bg-neutral-900">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
             <Tags className="h-6 w-6 text-neutral-400" />
           </div>
-          <p className="mt-4 text-sm font-medium text-neutral-900">No categories yet</p>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-4 text-sm font-medium text-neutral-900 dark:text-neutral-100">No categories yet</p>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             Create a category (like "Silk Sarees" or "Lehengas") before adding products.
           </p>
           <button
@@ -102,23 +104,26 @@ export default function CategoriesPage() {
       {categories && categories.length > 0 && (
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((category) => (
-            <div key={category.id} className="rounded-xl border border-neutral-200 bg-white p-4">
+            <div
+              key={category.id}
+              className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium text-neutral-900">{category.name}</p>
+                  <p className="font-medium text-neutral-900 dark:text-neutral-100">{category.name}</p>
                   {category.description && (
-                    <p className="mt-1 text-sm text-neutral-500">{category.description}</p>
+                    <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{category.description}</p>
                   )}
                 </div>
                 <Badge tone={category.product_count > 0 ? 'blue' : 'neutral'}>
                   {category.product_count} {category.product_count === 1 ? 'product' : 'products'}
                 </Badge>
               </div>
-              <div className="mt-4 flex gap-2 border-t border-neutral-100 pt-3">
+              <div className="mt-4 flex gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
                 <button
                   type="button"
                   onClick={() => setCategoryToEdit(category)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                  className="inline-flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   Edit
@@ -126,7 +131,7 @@ export default function CategoriesPage() {
                 <button
                   type="button"
                   onClick={() => setCategoryToDelete(category)}
-                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete

@@ -14,7 +14,7 @@ import type { Category } from '@/types/category';
 import type { ProductDetail, ProductStatus } from '@/types/product';
 
 const inputClass =
-  'w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
+  'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-base text-neutral-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500';
 
 const STATUS_OPTIONS: Array<{ value: ProductStatus; label: string }> = [
   { value: 'AVAILABLE', label: 'Available' },
@@ -209,23 +209,23 @@ function ProductFormFields({
     <div className="mx-auto max-w-2xl">
       <Link
         to="/admin/products"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-500 hover:text-neutral-700"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
       >
         <ArrowLeft className="h-4 w-4" />
         All products
       </Link>
 
-      <h1 className="mt-3 text-xl font-semibold text-neutral-900">
+      <h1 className="mt-3 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
         {isEdit ? 'Edit product' : 'Add a product'}
       </h1>
-      <p className="mt-1 text-sm text-neutral-500">
+      <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
         {isEdit
           ? 'Update the details below and save your changes.'
           : "Fill in the basics -- you can add photos right after you save."}
       </p>
 
       {noCategoriesYet && (
-        <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             You need at least one category before adding products.{' '}
@@ -237,13 +237,18 @@ function ProductFormFields({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-xl border border-neutral-200 bg-white p-5">
+      <form
+        onSubmit={handleSubmit}
+        className="mt-6 space-y-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900"
+      >
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+            {error}
+          </div>
         )}
 
         <label className="block">
-          <span className="text-sm font-medium text-neutral-700">
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
             Product name<span className="text-red-500"> *</span>
           </span>
           <input
@@ -258,7 +263,7 @@ function ProductFormFields({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className="text-sm font-medium text-neutral-700">
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
               Category<span className="text-red-500"> *</span>
             </span>
             <select
@@ -280,7 +285,7 @@ function ProductFormFields({
           </label>
 
           <label className="block">
-            <span className="text-sm font-medium text-neutral-700">
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
               Price (₹)<span className="text-red-500"> *</span>
             </span>
             <input
@@ -298,7 +303,7 @@ function ProductFormFields({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className="text-sm font-medium text-neutral-700">
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
               Quantity available<span className="text-red-500"> *</span>
             </span>
             <input
@@ -313,7 +318,7 @@ function ProductFormFields({
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-neutral-700">Discount (%)</span>
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Discount (%)</span>
             <input
               type="number"
               min="0"
@@ -328,7 +333,7 @@ function ProductFormFields({
         </div>
 
         <label className="block">
-          <span className="text-sm font-medium text-neutral-700">Product code</span>
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Product code</span>
           <input
             type="text"
             value={form.product_code}
@@ -340,7 +345,7 @@ function ProductFormFields({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className="text-sm font-medium text-neutral-700">Color</span>
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Color</span>
             <input
               type="text"
               value={form.color}
@@ -350,7 +355,7 @@ function ProductFormFields({
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-neutral-700">Brand</span>
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Brand</span>
             <input
               type="text"
               value={form.brand}
@@ -362,7 +367,7 @@ function ProductFormFields({
         </div>
 
         <label className="block">
-          <span className="text-sm font-medium text-neutral-700">Description</span>
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Description</span>
           <textarea
             value={form.description}
             onChange={(e) => update('description', e.target.value)}
@@ -374,7 +379,7 @@ function ProductFormFields({
 
         {isEdit && (
           <div>
-            <span className="text-sm font-medium text-neutral-700">Status</span>
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Status</span>
             <div className="mt-1 flex flex-wrap gap-2">
               {STATUS_OPTIONS.map((option) => (
                 <button
@@ -383,8 +388,8 @@ function ProductFormFields({
                   onClick={() => setStatus(option.value)}
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     status === option.value
-                      ? 'border-brand-600 bg-brand-50 text-brand-700'
-                      : 'border-neutral-300 text-neutral-600 hover:bg-neutral-50'
+                      ? 'border-brand-600 bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300'
+                      : 'border-neutral-300 text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800'
                   }`}
                 >
                   {option.label}
@@ -394,10 +399,10 @@ function ProductFormFields({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-neutral-100 pt-4">
+        <div className="flex justify-end gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
           <Link
             to="/admin/products"
-            className="rounded-lg px-3.5 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+            className="rounded-lg px-3.5 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             Cancel
           </Link>
@@ -412,7 +417,7 @@ function ProductFormFields({
       </form>
 
       {isEdit && product && (
-        <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-5">
+        <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
           <ProductImageManager
             shopId={shopId}
             productId={product.id}

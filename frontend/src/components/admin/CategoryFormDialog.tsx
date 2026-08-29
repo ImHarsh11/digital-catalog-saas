@@ -13,7 +13,7 @@ interface CategoryFormDialogProps {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
+  'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-base text-neutral-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500';
 
 export default function CategoryFormDialog({ shopId, category, onClose }: CategoryFormDialogProps) {
   const isEdit = Boolean(category);
@@ -52,7 +52,7 @@ export default function CategoryFormDialog({ shopId, category, onClose }: Catego
         )}
 
         <label className="block">
-          <span className="text-sm font-medium text-neutral-700">
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
             Category name<span className="text-red-500"> *</span>
           </span>
           <input
@@ -66,7 +66,7 @@ export default function CategoryFormDialog({ shopId, category, onClose }: Catego
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium text-neutral-700">Description</span>
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Description</span>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -76,11 +76,11 @@ export default function CategoryFormDialog({ shopId, category, onClose }: Catego
           />
         </label>
 
-        <div className="flex justify-end gap-2 border-t border-neutral-100 pt-4">
+        <div className="flex justify-end gap-2 border-t border-neutral-100 pt-4 dark:border-neutral-800">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-3.5 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+            className="rounded-lg px-3.5 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             Cancel
           </button>

@@ -37,8 +37,8 @@ export default function DashboardPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Dashboard</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             {shop ? `An overview of ${shop.name}'s catalog.` : 'An overview of your catalog.'}
           </p>
         </div>
@@ -73,23 +73,28 @@ export default function DashboardPage() {
 
           <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             {STAT_CARDS.map(({ key, label, icon: Icon }) => (
-              <div key={key} className="rounded-xl border border-neutral-200 bg-white p-4">
-                <div className="flex items-center gap-2 text-neutral-400">
+              <div
+                key={key}
+                className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+              >
+                <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500">
                   <Icon className="h-4 w-4" />
                   <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
                 </div>
-                <p className="mt-2 text-2xl font-semibold text-neutral-900">{data[key] as number}</p>
+                <p className="mt-2 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+                  {data[key] as number}
+                </p>
               </div>
             ))}
           </div>
 
           {data.product_count === 0 && (
-            <div className="mt-8 flex flex-col items-center rounded-xl border border-dashed border-neutral-300 bg-white px-6 py-14 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100">
+            <div className="mt-8 flex flex-col items-center rounded-xl border border-dashed border-neutral-300 bg-white px-6 py-14 text-center dark:border-neutral-700 dark:bg-neutral-900">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
                 <Package className="h-6 w-6 text-neutral-400" />
               </div>
-              <p className="mt-4 text-sm font-medium text-neutral-900">No products yet</p>
-              <p className="mt-1 text-sm text-neutral-500">
+              <p className="mt-4 text-sm font-medium text-neutral-900 dark:text-neutral-100">No products yet</p>
+              <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
                 Add your first product to start building your catalog.
               </p>
               <Link

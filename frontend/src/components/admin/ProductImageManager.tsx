@@ -77,14 +77,14 @@ export default function ProductImageManager({
 
   return (
     <div>
-      <h2 className="text-sm font-semibold text-neutral-900">Photos</h2>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Photos</h2>
+      <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
         Add a few clear photos. The starred photo is shown first in your catalog.
       </p>
 
-      <label className="mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-50 px-6 py-8 text-center hover:border-brand-400 hover:bg-brand-50/40">
+      <label className="mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-50 px-6 py-8 text-center hover:border-brand-400 hover:bg-brand-50/40 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-800/60">
         <Upload className="h-6 w-6 text-neutral-400" />
-        <span className="text-sm font-medium text-neutral-700">Tap to add photos</span>
+        <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Tap to add photos</span>
         <span className="text-xs text-neutral-400">JPEG, PNG or WebP, up to 5MB each</span>
         <input
           type="file"
@@ -101,12 +101,12 @@ export default function ProductImageManager({
       {uploads.length > 0 && (
         <div className="mt-3 space-y-2">
           {uploads.map((upload) => (
-            <div key={upload.id} className="rounded-lg border border-neutral-200 bg-white p-2 text-xs">
+            <div key={upload.id} className="rounded-lg border border-neutral-200 bg-white p-2 text-xs dark:border-neutral-800 dark:bg-neutral-900">
               <div className="flex items-center justify-between">
-                <span className="truncate text-neutral-600">{upload.name}</span>
+                <span className="truncate text-neutral-600 dark:text-neutral-300">{upload.name}</span>
                 <span className="text-neutral-400">{upload.progress}%</span>
               </div>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
                 <div
                   className="h-full bg-brand-600 transition-all"
                   style={{ width: `${upload.progress}%` }}
@@ -124,7 +124,7 @@ export default function ProductImageManager({
           {images.map((image) => {
             const isPrimary = image.image_url === primaryImageUrl;
             return (
-              <div key={image.id} className="relative overflow-hidden rounded-lg border border-neutral-200">
+              <div key={image.id} className="relative overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
                 <img src={image.image_url} alt="" className="h-28 w-full object-cover" />
                 {isPrimary && (
                   <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-amber-600">

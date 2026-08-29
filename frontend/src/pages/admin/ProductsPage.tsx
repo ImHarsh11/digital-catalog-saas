@@ -159,12 +159,12 @@ export default function ProductsPage() {
       )}
 
       {products && products.length === 0 && !hasFilters && (
-        <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-neutral-300 bg-white px-6 py-14 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100">
+        <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-neutral-300 bg-white px-6 py-14 text-center dark:border-neutral-700 dark:bg-neutral-900">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
             <Package className="h-6 w-6 text-neutral-400" />
           </div>
-          <p className="mt-4 text-sm font-medium text-neutral-900">No products yet</p>
-          <p className="mt-1 text-sm text-neutral-500">Add your first product to start building your catalog.</p>
+          <p className="mt-4 text-sm font-medium text-neutral-900 dark:text-neutral-100">No products yet</p>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Add your first product to start building your catalog.</p>
           <Link
             to="/admin/products/new"
             className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700"
@@ -176,12 +176,12 @@ export default function ProductsPage() {
       )}
 
       {products && products.length === 0 && hasFilters && (
-        <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-neutral-300 bg-white px-6 py-14 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100">
+        <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-neutral-300 bg-white px-6 py-14 text-center dark:border-neutral-700 dark:bg-neutral-900">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
             <Search className="h-6 w-6 text-neutral-400" />
           </div>
-          <p className="mt-4 text-sm font-medium text-neutral-900">No products match your filters</p>
-          <p className="mt-1 text-sm text-neutral-500">Try a different search or clear the filters.</p>
+          <p className="mt-4 text-sm font-medium text-neutral-900 dark:text-neutral-100">No products match your filters</p>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Try a different search or clear the filters.</p>
         </div>
       )}
 
@@ -190,8 +190,8 @@ export default function ProductsPage() {
           {products.map((product) => {
             const badge = productStatusBadge(product.status);
             return (
-              <div key={product.id} className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800">
-                <div className="flex h-40 items-center justify-center bg-neutral-100">
+              <div key={product.id} className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                <div className="flex h-40 items-center justify-center bg-neutral-100 dark:bg-neutral-800">
                   {product.primary_image_url ? (
                     <img
                       src={product.primary_image_url}
@@ -212,7 +212,7 @@ export default function ProductsPage() {
                     </div>
                     <Badge tone={badge.tone}>{badge.label}</Badge>
                   </div>
-                  <p className="mt-1 text-xs text-neutral-500">{product.category.name}</p>
+                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{product.category.name}</p>
                   <p className="mt-2 text-lg font-semibold text-neutral-900 dark:text-white">{formatPrice(product.price)}</p>
                   {product.created_by && (
                     <p className="mt-1 text-xs text-neutral-400">
@@ -223,7 +223,7 @@ export default function ProductsPage() {
                   <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
                     <Link
                       to={`/admin/products/${product.id}/edit`}
-                      className="inline-flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                      className="inline-flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                       Edit
@@ -233,7 +233,7 @@ export default function ProductsPage() {
                         type="button"
                         onClick={() => statusMutation.mutate({ productId: product.id, newStatus: 'AVAILABLE' })}
                         disabled={statusMutation.isPending}
-                        className="inline-flex items-center gap-1 rounded-lg border border-green-200 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-60"
+                        className="inline-flex items-center gap-1 rounded-lg border border-green-200 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-60 dark:border-green-900 dark:text-green-400 dark:hover:bg-green-950"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                         Mark Available
@@ -243,7 +243,7 @@ export default function ProductsPage() {
                         type="button"
                         onClick={() => statusMutation.mutate({ productId: product.id, newStatus: 'SOLD' })}
                         disabled={statusMutation.isPending}
-                        className="inline-flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
+                        className="inline-flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Mark Sold
@@ -252,7 +252,7 @@ export default function ProductsPage() {
                     <button
                       type="button"
                       onClick={() => setProductToDelete(product)}
-                      className="ml-auto inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                      className="ml-auto inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       Delete

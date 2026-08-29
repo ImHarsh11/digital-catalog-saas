@@ -13,7 +13,7 @@ import { BillingCard } from '@/components/admin/BillingPanel';
 import type { ShopDetail } from '@/types/shop';
 
 const inputClass =
-  'w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-base focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
+  'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-base text-neutral-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-500';
 
 interface FormState {
   city: string;
@@ -61,13 +61,15 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-xl font-semibold text-neutral-900">Settings</h1>
-      <p className="mt-1 text-sm text-neutral-500">Your shop's catalog link, trial status, and contact details.</p>
+      <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Settings</h1>
+      <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+        Your shop's catalog link, trial status, and contact details.
+      </p>
 
-      <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-5">
+      <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex items-center gap-2">
           <Store className="h-4 w-4 text-neutral-400" />
-          <h2 className="text-sm font-semibold text-neutral-900">{shop?.name}</h2>
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{shop?.name}</h2>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {shop && (
@@ -77,18 +79,18 @@ export default function SettingsPage() {
           )}
           <Badge tone={shop?.is_active ? 'green' : 'neutral'}>{shop?.is_active ? 'Active' : 'Inactive'}</Badge>
         </div>
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
-          <span className="flex-1 truncate text-sm text-neutral-600">{catalogPath}</span>
+        <div className="mt-4 flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-800">
+          <span className="flex-1 truncate text-sm text-neutral-600 dark:text-neutral-300">{catalogPath}</span>
           <button
             type="button"
             onClick={copyCatalogUrl}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-neutral-700"
           >
             <Copy className="h-3.5 w-3.5" />
             {copied ? 'Copied!' : 'Copy link'}
           </button>
         </div>
-        <p className="mt-2 text-xs text-neutral-400">
+        <p className="mt-2 text-xs text-neutral-400 dark:text-neutral-500">
           This is where customers will view your catalog once it's live.
         </p>
       </div>
@@ -147,15 +149,20 @@ function ProfileForm({ shopId, profile }: { shopId: number; profile: ShopDetail 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-xl border border-neutral-200 bg-white p-5">
-      <h2 className="text-sm font-semibold text-neutral-900">Contact details</h2>
+    <form
+      onSubmit={handleSubmit}
+      className="mt-6 space-y-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900"
+    >
+      <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Contact details</h2>
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          {error}
+        </div>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="block">
-          <span className="text-sm font-medium text-neutral-700">City</span>
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">City</span>
           <input
             type="text"
             value={form.city}
@@ -164,7 +171,7 @@ function ProfileForm({ shopId, profile }: { shopId: number; profile: ShopDetail 
           />
         </label>
         <label className="block">
-          <span className="text-sm font-medium text-neutral-700">Phone</span>
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Phone</span>
           <input
             type="text"
             value={form.phone}
@@ -175,7 +182,7 @@ function ProfileForm({ shopId, profile }: { shopId: number; profile: ShopDetail 
       </div>
 
       <label className="block">
-        <span className="text-sm font-medium text-neutral-700">Address</span>
+        <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Address</span>
         <input
           type="text"
           value={form.address}
@@ -185,7 +192,7 @@ function ProfileForm({ shopId, profile }: { shopId: number; profile: ShopDetail 
       </label>
 
       <label className="block">
-        <span className="text-sm font-medium text-neutral-700">Website</span>
+        <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Website</span>
         <input
           type="text"
           value={form.website}
@@ -196,7 +203,7 @@ function ProfileForm({ shopId, profile }: { shopId: number; profile: ShopDetail 
       </label>
 
       <label className="block">
-        <span className="text-sm font-medium text-neutral-700">About your shop</span>
+        <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">About your shop</span>
         <textarea
           value={form.description}
           onChange={(e) => update('description', e.target.value)}
@@ -206,7 +213,7 @@ function ProfileForm({ shopId, profile }: { shopId: number; profile: ShopDetail 
         />
       </label>
 
-      <div className="flex justify-end border-t border-neutral-100 pt-4">
+      <div className="flex justify-end border-t border-neutral-100 pt-4 dark:border-neutral-800">
         <button
           type="submit"
           disabled={mutation.isPending}
