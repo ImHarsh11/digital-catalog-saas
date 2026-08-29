@@ -13,6 +13,7 @@ import {
 import { formatPrice } from '@/utils/currency';
 import ProductImage from '@/components/catalog/ProductImage';
 import Spinner from '@/components/Spinner';
+import CatalogThemeProvider from '@/components/catalog/CatalogThemeProvider';
 import CatalogUnavailablePage from './CatalogUnavailablePage';
 import type { PublicProductListItem } from '@/types/publicCatalog';
 
@@ -34,40 +35,53 @@ function discountedPrice(price: number, discountPercent: number | null): number 
 
 // ─── Welcome / Splash screen ──────────────────────────────────────────────────
 
-function WelcomeSplash({ shopName, onEnter }: { shopName: string; onEnter: () => void }) {
+function WelcomeSplash({
+  shopName,
+  tagline,
+  ornate,
+  onEnter,
+}: {
+  shopName: string;
+  tagline: string;
+  ornate: boolean;
+  onEnter: () => void;
+}) {
   const initials = shopInitials(shopName);
 
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center"
-      style={{
-        background: 'linear-gradient(135deg, #4a0a14 0%, #8B1A1A 40%, #6b1520 70%, #3d0a10 100%)',
-      }}
+      style={{ background: 'var(--catalog-splash-grad)' }}
     >
-      {/* Decorative corner ornaments */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <svg className="absolute left-0 top-0 h-48 w-48 opacity-10" viewBox="0 0 200 200" fill="none">
-          <circle cx="0" cy="0" r="180" stroke="#C9A84C" strokeWidth="1" />
-          <circle cx="0" cy="0" r="150" stroke="#C9A84C" strokeWidth="0.5" />
-          <circle cx="0" cy="0" r="120" stroke="#C9A84C" strokeWidth="0.5" />
-        </svg>
-        <svg className="absolute bottom-0 right-0 h-48 w-48 opacity-10" viewBox="0 0 200 200" fill="none">
-          <circle cx="200" cy="200" r="180" stroke="#C9A84C" strokeWidth="1" />
-          <circle cx="200" cy="200" r="150" stroke="#C9A84C" strokeWidth="0.5" />
-          <circle cx="200" cy="200" r="120" stroke="#C9A84C" strokeWidth="0.5" />
-        </svg>
-        {/* paisley-inspired dots */}
-        {Array.from({ length: 20 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute h-1 w-1 rounded-full bg-yellow-300 opacity-20"
-            style={{
-              left: `${(i * 37 + 10) % 95}%`,
-              top: `${(i * 53 + 5) % 90}%`,
-            }}
-          />
-        ))}
-      </div>
+      {/* Decorative corner ornaments (ornate presets only) */}
+      {ornate && (
+        <div
+          className="pointer-events-none absolute inset-0 overflow-hidden"
+          style={{ color: 'var(--catalog-accent)' }}
+        >
+          <svg className="absolute left-0 top-0 h-48 w-48 opacity-10" viewBox="0 0 200 200" fill="none">
+            <circle cx="0" cy="0" r="180" stroke="currentColor" strokeWidth="1" />
+            <circle cx="0" cy="0" r="150" stroke="currentColor" strokeWidth="0.5" />
+            <circle cx="0" cy="0" r="120" stroke="currentColor" strokeWidth="0.5" />
+          </svg>
+          <svg className="absolute bottom-0 right-0 h-48 w-48 opacity-10" viewBox="0 0 200 200" fill="none">
+            <circle cx="200" cy="200" r="180" stroke="currentColor" strokeWidth="1" />
+            <circle cx="200" cy="200" r="150" stroke="currentColor" strokeWidth="0.5" />
+            <circle cx="200" cy="200" r="120" stroke="currentColor" strokeWidth="0.5" />
+          </svg>
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div
+              key={i}
+              className="absolute h-1 w-1 rounded-full opacity-20"
+              style={{
+                background: 'var(--catalog-accent)',
+                left: `${(i * 37 + 10) % 95}%`,
+                top: `${(i * 53 + 5) % 90}%`,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Gold top divider */}
       <div className="mb-10 flex items-center gap-3">
@@ -80,20 +94,24 @@ function WelcomeSplash({ shopName, onEnter }: { shopName: string; onEnter: () =>
       <div
         className="mb-6 flex h-28 w-28 items-center justify-center rounded-full border-2 border-yellow-400/60 shadow-2xl"
         style={{
-          background: 'radial-gradient(circle at 35% 35%, #c9a84c, #8b6914)',
+          background:
+            'radial-gradient(circle at 35% 35%, var(--catalog-accent), color-mix(in srgb, var(--catalog-accent) 55%, #000))',
         }}
       >
         <span className="text-4xl font-bold tracking-widest text-white drop-shadow-lg">{initials}</span>
       </div>
 
       {/* Shop name */}
-      <h1 className="px-8 text-center text-3xl font-bold uppercase tracking-[0.15em] text-white drop-shadow-md sm:text-4xl">
+      <h1
+        className="px-8 text-center text-3xl font-bold uppercase tracking-[0.15em] text-white drop-shadow-md sm:text-4xl"
+        style={{ fontFamily: 'var(--catalog-heading-font)' }}
+      >
         {shopName}
       </h1>
 
       {/* Tagline */}
       <p className="mt-3 text-center text-sm font-light tracking-widest text-yellow-300/80 uppercase">
-        Crafted with elegance · Est. tradition
+        {tagline}
       </p>
 
       {/* Gold bottom divider */}
@@ -189,7 +207,7 @@ function ProductCard({
   return (
     <div
       className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
-      style={{ border: '1px solid rgba(139,26,26,0.08)' }}
+      style={{ border: '1px solid var(--catalog-hairline)' }}
     >
       {/* Like button */}
       {onLike && (
@@ -318,7 +336,7 @@ function CustomerContactPopup({
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending || (!name && !whatsapp && !email)}
             className="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, #8B1A1A, #c9a84c)' }}
+            style={{ background: 'linear-gradient(135deg, var(--catalog-primary), var(--catalog-accent))' }}
           >
             {mutation.isPending ? 'Saving…' : 'Submit'}
           </button>
@@ -345,7 +363,7 @@ function BottomNav({
     <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 sm:hidden">
       <div
         className="flex items-center gap-1 rounded-full px-2 py-2 shadow-2xl"
-        style={{ background: 'rgba(74,10,20,0.95)', backdropFilter: 'blur(12px)' }}
+        style={{ background: 'var(--catalog-nav-bg)', backdropFilter: 'blur(12px)' }}
       >
         <NavPill
           label="Catalog"
@@ -528,7 +546,7 @@ export default function ShopCatalogPage() {
     return (
       <div
         className="flex min-h-screen items-center justify-center"
-        style={{ background: 'linear-gradient(135deg, #4a0a14, #8B1A1A)' }}
+        style={{ background: 'var(--catalog-splash-grad, linear-gradient(135deg, #691f2d, #932436))' }}
       >
         <Spinner />
       </div>
@@ -560,29 +578,36 @@ export default function ShopCatalogPage() {
   const hasFilters = Boolean(search || categoryId || colorFilter || brandFilter || priceMin || priceMax);
   const activeFilterCount = [colorFilter, brandFilter, priceMin, priceMax].filter(Boolean).length;
   const priceRangeInverted = priceMin !== '' && priceMax !== '' && Number(priceMin) > Number(priceMax);
-  const { shop, categories } = catalog;
+  const { shop, categories, theme } = catalog;
 
   return (
-    <>
+    <CatalogThemeProvider theme={theme}>
       {/* Splash screen */}
-      {showSplash && <WelcomeSplash shopName={shop.name} onEnter={() => setShowSplash(false)} />}
+      {showSplash && theme.splash_enabled && (
+        <WelcomeSplash
+          shopName={shop.name}
+          tagline={theme.hero_tagline}
+          ornate={theme.splash_style === 'ornate'}
+          onEnter={() => setShowSplash(false)}
+        />
+      )}
 
       <div
         className="min-h-screen pb-24 sm:pb-8"
-        style={{ background: 'linear-gradient(180deg, #fdf8f4 0%, #faf5f0 100%)' }}
+        style={{ background: 'var(--catalog-bg)' }}
       >
         {/* ── Header ── */}
         <header
           className="relative overflow-hidden px-4 pb-6 pt-8 sm:px-6"
           style={{
-            background: 'linear-gradient(135deg, #4a0a14 0%, #8B1A1A 60%, #6b1520 100%)',
+            background: 'var(--catalog-header-grad)',
           }}
         >
           {/* Decorative arcs */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             <svg className="absolute -right-10 -top-10 h-48 w-48 opacity-10" viewBox="0 0 200 200" fill="none">
-              <circle cx="200" cy="0" r="160" stroke="#C9A84C" strokeWidth="1" />
-              <circle cx="200" cy="0" r="130" stroke="#C9A84C" strokeWidth="0.5" />
+              <circle cx="200" cy="0" r="160" stroke="currentColor" strokeWidth="1" />
+              <circle cx="200" cy="0" r="130" stroke="currentColor" strokeWidth="0.5" />
             </svg>
           </div>
 
@@ -596,7 +621,10 @@ export default function ShopCatalogPage() {
               ) : (
                 <div
                   className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-yellow-400/40 shadow-lg"
-                  style={{ background: 'radial-gradient(circle at 35% 35%, #c9a84c, #8b6914)' }}
+                  style={{
+                    background:
+                      'radial-gradient(circle at 35% 35%, var(--catalog-accent), color-mix(in srgb, var(--catalog-accent) 55%, #000))',
+                  }}
                 >
                   <span className="text-xl font-bold tracking-wider text-white">
                     {shopInitials(shop.name)}
@@ -652,8 +680,8 @@ export default function ShopCatalogPage() {
                   }`}
                   style={
                     categoryId === ''
-                      ? { background: 'linear-gradient(135deg, #8B1A1A, #c9a84c)' }
-                      : { border: '2px solid rgba(139,26,26,0.15)' }
+                      ? { background: 'linear-gradient(135deg, var(--catalog-primary), var(--catalog-accent))' }
+                      : { border: '2px solid var(--catalog-hairline)' }
                   }
                 >
                   All
@@ -679,8 +707,8 @@ export default function ShopCatalogPage() {
                       }`}
                       style={
                         active
-                          ? { background: 'linear-gradient(135deg, #8B1A1A, #c9a84c)' }
-                          : { border: '2px solid rgba(139,26,26,0.15)' }
+                          ? { background: 'linear-gradient(135deg, var(--catalog-primary), var(--catalog-accent))' }
+                          : { border: '2px solid var(--catalog-hairline)' }
                       }
                     >
                       {initial}
@@ -703,9 +731,9 @@ export default function ShopCatalogPage() {
         <div
           className="sticky top-0 z-20 border-b px-4 py-3 sm:px-6"
           style={{
-            background: 'rgba(253,248,244,0.96)',
+            background: 'var(--catalog-bg)',
             backdropFilter: 'blur(12px)',
-            borderColor: 'rgba(139,26,26,0.1)',
+            borderColor: 'var(--catalog-hairline)',
           }}
         >
           <div className="mx-auto flex max-w-5xl items-center gap-2">
@@ -724,10 +752,10 @@ export default function ShopCatalogPage() {
                 placeholder="Search sarees, fabrics…"
                 className="w-full rounded-full border py-2.5 pl-9 pr-4 text-sm focus:outline-none focus:ring-2"
                 style={{
-                  borderColor: 'rgba(139,26,26,0.2)',
+                  borderColor: 'var(--catalog-hairline)',
                   background: 'white',
                   // @ts-ignore
-                  '--tw-ring-color': '#8B1A1A',
+                  '--tw-ring-color': 'var(--catalog-primary)',
                 }}
               />
             </div>
@@ -735,7 +763,7 @@ export default function ShopCatalogPage() {
               type="button"
               onClick={() => setShowFilters((v) => !v)}
               className="relative flex items-center gap-1 rounded-full border px-3 py-2 text-xs font-medium transition-colors focus:outline-none"
-              style={{ borderColor: 'rgba(139,26,26,0.2)', color: '#8B1A1A' }}
+              style={{ borderColor: 'var(--catalog-hairline)', color: 'var(--catalog-primary)' }}
             >
               <Filter className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Filters</span>
@@ -749,7 +777,7 @@ export default function ShopCatalogPage() {
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
               className="hidden rounded-full border px-3 py-2 text-xs font-medium sm:block focus:outline-none"
-              style={{ borderColor: 'rgba(139,26,26,0.2)', color: '#8B1A1A' }}
+              style={{ borderColor: 'var(--catalog-hairline)', color: 'var(--catalog-primary)' }}
               aria-label="Sort products"
             >
               {SORT_OPTIONS.map((o) => (
@@ -771,7 +799,7 @@ export default function ShopCatalogPage() {
                   onChange={(e) => setColorFilter(e.target.value)}
                   placeholder="e.g. Red"
                   className="w-28 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
-                  style={{ borderColor: 'rgba(139,26,26,0.2)' }}
+                  style={{ borderColor: 'var(--catalog-hairline)' }}
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -782,7 +810,7 @@ export default function ShopCatalogPage() {
                   onChange={(e) => setBrandFilter(e.target.value)}
                   placeholder="e.g. Banarasi"
                   className="w-28 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
-                  style={{ borderColor: 'rgba(139,26,26,0.2)' }}
+                  style={{ borderColor: 'var(--catalog-hairline)' }}
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -794,7 +822,7 @@ export default function ShopCatalogPage() {
                   placeholder="₹0"
                   min="0"
                   className="w-24 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
-                  style={{ borderColor: 'rgba(139,26,26,0.2)' }}
+                  style={{ borderColor: 'var(--catalog-hairline)' }}
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -806,7 +834,7 @@ export default function ShopCatalogPage() {
                   placeholder="No limit"
                   min="0"
                   className="w-24 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
-                  style={{ borderColor: 'rgba(139,26,26,0.2)' }}
+                  style={{ borderColor: 'var(--catalog-hairline)' }}
                 />
               </label>
               {activeFilterCount > 0 && (
@@ -838,7 +866,7 @@ export default function ShopCatalogPage() {
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
               className="rounded-full border px-3 py-1.5 text-xs font-medium focus:outline-none"
-              style={{ borderColor: 'rgba(139,26,26,0.2)', color: '#8B1A1A' }}
+              style={{ borderColor: 'var(--catalog-hairline)', color: 'var(--catalog-primary)' }}
               aria-label="Sort products"
             >
               {SORT_OPTIONS.map((o) => (
@@ -940,7 +968,7 @@ export default function ShopCatalogPage() {
                     onClick={() => { setPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                     disabled={page <= 1}
                     className="rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-40"
-                    style={{ borderColor: 'rgba(139,26,26,0.3)', color: '#8B1A1A' }}
+                    style={{ borderColor: 'var(--catalog-hairline)', color: 'var(--catalog-primary)' }}
                   >
                     Previous
                   </button>
@@ -966,8 +994,8 @@ export default function ShopCatalogPage() {
                           }`}
                           style={
                             page === p
-                              ? { background: 'linear-gradient(135deg, #8B1A1A, #c9a84c)' }
-                              : { borderColor: 'rgba(139,26,26,0.2)' }
+                              ? { background: 'linear-gradient(135deg, var(--catalog-primary), var(--catalog-accent))' }
+                              : { borderColor: 'var(--catalog-hairline)' }
                           }
                         >
                           {p}
@@ -979,7 +1007,7 @@ export default function ShopCatalogPage() {
                     onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                     disabled={page >= totalPages}
                     className="rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-40"
-                    style={{ borderColor: 'rgba(139,26,26,0.3)', color: '#8B1A1A' }}
+                    style={{ borderColor: 'var(--catalog-hairline)', color: 'var(--catalog-primary)' }}
                   >
                     Next
                   </button>
@@ -1009,6 +1037,6 @@ export default function ShopCatalogPage() {
 
       {/* Pinterest-style bottom nav (mobile only) */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} shopPhone={shop.phone} />
-    </>
+    </CatalogThemeProvider>
   );
 }

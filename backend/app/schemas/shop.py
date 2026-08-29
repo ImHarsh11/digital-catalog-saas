@@ -1,9 +1,11 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models.enums import SubscriptionStatus
+from app.schemas.theme import ResolvedTheme, ThemeConfig
 from app.schemas.user import UserRead
+from app.services.theme import PRESETS
 
 _SLUG_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
 
@@ -65,12 +67,20 @@ class ShopCreate(BaseModel):
     website: str | None = Field(default=None, max_length=1024)
     logo_url: str | None = Field(default=None, max_length=1024)
     trial_days: int = Field(default=14, ge=1, le=90)
+    theme_preset: str | None = None
 
     owner_name: str = Field(min_length=1, max_length=255)
     owner_email: EmailStr
     # max_length=72 matches bcrypt's byte limit (app/auth/security.py) --
     # rejected here with a clean 422 rather than a 500 from hash_password.
     owner_password: str = Field(min_length=8, max_length=72)
+
+    @field_validator("theme_preset")
+    @classmethod
+    def _known_preset(cls, v: str | None) -> str | None:
+        if v is not None and v not in PRESETS:
+            raise ValueError(f"Unknown theme preset '{v}'.")
+        return v
 
 
 class ShopUpdate(BaseModel):
@@ -147,3 +157,5 @@ class ShopCreateResponse(BaseModel):
 class ShopDetailResponse(BaseModel):
     shop: ShopDetail
     billing: ShopBillingDetail
+    theme_config: ThemeConfig
+    theme_resolved: ResolvedTheme

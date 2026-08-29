@@ -77,6 +77,7 @@ def create_shop_with_owner(db: Session, payload: ShopCreate) -> tuple[Shop, User
         trial_start_date=today,
         trial_end_date=today + timedelta(days=trial_days),
         subscription_status=SubscriptionStatus.TRIAL,
+        theme={"preset": payload.theme_preset} if getattr(payload, "theme_preset", None) else None,
     )
     db.add(shop)
     db.flush()  # populates shop.id (and shop_billing.shop_id) for the owner's FK

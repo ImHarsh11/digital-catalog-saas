@@ -28,11 +28,13 @@ from app.schemas.shop import (
     ShopStatusUpdate,
     ShopUpdate,
 )
+from app.schemas.theme import ResolvedTheme, ThemeConfig, ThemePresetInfo
 from app.schemas.user import UserRead
 from app.services import admin_metrics as metrics_service
 from app.services import billing as billing_service
 from app.services import qr as qr_service
 from app.services import shop as shop_service
+from app.services import theme as theme_service
 
 router = APIRouter(
     prefix="/api/super-admin",
@@ -97,6 +99,16 @@ def _get_shop_or_404(db: Session, shop_id: int) -> Shop:
     return shop
 
 
+def _detail_response(db: Session, shop: Shop) -> ShopDetailResponse:
+    product_count = shop_service.get_product_counts_by_shop(db).get(shop.id, 0)
+    return ShopDetailResponse(
+        shop=_to_detail(shop, product_count),
+        billing=_billing_detail(shop),
+        theme_config=ThemeConfig(**(shop.theme or {})),
+        theme_resolved=ResolvedTheme(**theme_service.resolve_theme(shop.theme)),
+    )
+
+
 @router.get("/dashboard", response_model=SuperAdminDashboardStats)
 def get_dashboard(db: Session = Depends(get_db)) -> SuperAdminDashboardStats:
     return SuperAdminDashboardStats(**metrics_service.get_dashboard(db))
@@ -140,11 +152,28 @@ def create_shop(payload: ShopCreate, db: Session = Depends(get_db)) -> ShopCreat
     return ShopCreateResponse(shop=_to_detail(shop, 0), owner=UserRead.model_validate(owner))
 
 
+@router.get("/theme-presets", response_model=list[ThemePresetInfo])
+def list_theme_presets() -> list[ThemePresetInfo]:
+    return [ThemePresetInfo(**p) for p in theme_service.preset_choices()]
+
+
 @router.get("/shops/{shop_id}", response_model=ShopDetailResponse)
 def get_shop_detail(shop_id: int, db: Session = Depends(get_db)) -> ShopDetailResponse:
     shop = _get_shop_or_404(db, shop_id)
-    product_count = shop_service.get_product_counts_by_shop(db).get(shop.id, 0)
-    return ShopDetailResponse(shop=_to_detail(shop, product_count), billing=_billing_detail(shop))
+    return _detail_response(db, shop)
+
+
+@router.put("/shops/{shop_id}/theme", response_model=ShopDetailResponse)
+def update_shop_theme(
+    shop_id: int, payload: ThemeConfig, db: Session = Depends(get_db)
+) -> ShopDetailResponse:
+    """Replace a shop's theme config. The frontend sends the full config
+    (preset + any overrides); validation is enforced by ThemeConfig."""
+    shop = _get_shop_or_404(db, shop_id)
+    shop.theme = payload.model_dump(mode="json")
+    db.commit()
+    db.refresh(shop)
+    return _detail_response(db, shop)
 
 
 @router.get("/shops/{shop_id}/qr-code", response_class=Response)

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Calendar, MapPin, Palette, Pencil, Phone, Power, QrCode } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Pencil, Phone, Power, QrCode } from 'lucide-react';
 import { getShopDetail, setShopStatus, updateShopBilling } from '@/services/superAdmin';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { shopStatusBadge } from '@/utils/shopStatus';
@@ -11,6 +11,7 @@ import Badge from '@/components/Badge';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import ShopEditDialog from '@/components/super-admin/ShopEditDialog';
 import QrCodeModal from '@/components/super-admin/QrCodeModal';
+import ThemeTab from '@/components/super-admin/ThemeTab';
 import { useToast } from '@/hooks/useToast';
 import type { ShopBillingDetail, SubscriptionStatus } from '@/types/shop';
 
@@ -76,7 +77,7 @@ export default function ShopDetailPage() {
     );
   }
 
-  const { shop, billing } = data;
+  const { shop, billing, theme_config: themeConfig, theme_resolved: themeResolved } = data;
   const status = shopStatusBadge(shop);
 
   return (
@@ -151,10 +152,16 @@ export default function ShopDetailPage() {
           />
         )}
         {tab === 'theme' && (
-          <div className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-sm text-neutral-500">
-            <Palette className="mb-2 h-5 w-5 text-neutral-400" />
-            Theme presets and per-shop branding arrive in the theming update.
-          </div>
+          <ThemeTab
+            shopId={shopId}
+            shopSlug={shop.slug}
+            themeConfig={themeConfig}
+            themeResolved={themeResolved}
+            onSaved={() => {
+              invalidate();
+              showToast('success', 'Theme updated.');
+            }}
+          />
         )}
         {tab === 'access' && (
           <AccessTab

@@ -3,13 +3,19 @@ import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { ArrowLeft, Heart, Share2 } from 'lucide-react';
-import { getProductLikeStatus, getShopProduct, toggleProductLike } from '@/services/publicCatalog';
+import {
+  getProductLikeStatus,
+  getShopCatalog,
+  getShopProduct,
+  toggleProductLike,
+} from '@/services/publicCatalog';
 import { customerStatusBadge } from '@/utils/customerProductStatus';
 import { formatPrice } from '@/utils/currency';
 import { useToast } from '@/hooks/useToast';
 import ProductImage from '@/components/catalog/ProductImage';
 import Spinner from '@/components/Spinner';
 import Badge from '@/components/Badge';
+import CatalogThemeProvider from '@/components/catalog/CatalogThemeProvider';
 import CatalogUnavailablePage from './CatalogUnavailablePage';
 import type { PublicProductImage } from '@/types/publicCatalog';
 
@@ -20,6 +26,13 @@ export default function ProductDetailPage() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [activeImage, setActiveImage] = useState(0);
+
+  const { data: shopData } = useQuery({
+    queryKey: ['public', 'shop', slug],
+    queryFn: () => getShopCatalog(slug),
+    enabled: Boolean(slug),
+    retry: false,
+  });
 
   const { data: likeStatus } = useQuery({
     queryKey: ['public', 'like', slug, id],
@@ -112,8 +125,9 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 pb-16">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
+    <CatalogThemeProvider theme={shopData?.theme}>
+    <div className="pb-16" style={{ background: 'var(--catalog-bg)' }}>
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3 backdrop-blur sm:px-6" style={{ borderColor: 'var(--catalog-hairline)', background: 'color-mix(in srgb, var(--catalog-card) 92%, transparent)' }}>
         <Link
           to={`/shop/${slug}`}
           state={{ skipSplash: true }}
@@ -231,5 +245,6 @@ export default function ProductDetailPage() {
         </div>
       </div>
     </div>
+    </CatalogThemeProvider>
   );
 }

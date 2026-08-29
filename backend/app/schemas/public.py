@@ -11,6 +11,7 @@ field isn't listed on one of these models, it physically cannot leak here.
 from pydantic import BaseModel, Field, model_validator
 
 from app.models.enums import ProductStatus
+from app.schemas.theme import ResolvedTheme
 
 
 class PublicCategory(BaseModel):
@@ -33,6 +34,7 @@ class PublicShop(BaseModel):
 class PublicShopResponse(BaseModel):
     shop: PublicShop
     categories: list[PublicCategory]
+    theme: ResolvedTheme
 
 
 class PublicProductImage(BaseModel):

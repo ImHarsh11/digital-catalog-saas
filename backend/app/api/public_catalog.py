@@ -44,7 +44,9 @@ from app.schemas.public import (
     PublicShop,
     PublicShopResponse,
 )
+from app.schemas.theme import ResolvedTheme
 from app.services import public_catalog as catalog_service
+from app.services import theme as theme_service
 
 router = APIRouter(prefix="/api/public/shops", tags=["public-catalog"])
 
@@ -118,6 +120,7 @@ def get_shop_catalog(
             website=shop.website,
         ),
         categories=[_to_public_category(category) for category in categories],
+        theme=ResolvedTheme(**theme_service.resolve_theme(shop.theme)),
     )
 
 

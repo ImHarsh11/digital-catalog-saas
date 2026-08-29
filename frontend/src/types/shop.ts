@@ -1,4 +1,5 @@
 import type { User } from './auth';
+import type { ResolvedTheme, ThemeConfig } from './theme';
 
 export type SubscriptionStatus =
   | 'TRIAL'
@@ -63,6 +64,8 @@ export interface ShopBillingDetail {
 export interface ShopDetailResponse {
   shop: ShopDetail;
   billing: ShopBillingDetail;
+  theme_config: ThemeConfig;
+  theme_resolved: ResolvedTheme;
 }
 
 export interface ShopCreateInput {
@@ -75,6 +78,7 @@ export interface ShopCreateInput {
   website?: string;
   logo_url?: string;
   trial_days?: number;
+  theme_preset?: string;
   owner_name: string;
   owner_email: string;
   owner_password: string;

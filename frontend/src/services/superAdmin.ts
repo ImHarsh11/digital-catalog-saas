@@ -1,5 +1,6 @@
 import { api } from './api';
 import type { SuperAdminDashboardStats } from '@/types/dashboard';
+import type { ThemeConfig, ThemePresetInfo } from '@/types/theme';
 import type {
   ShopBillingDetail,
   ShopBillingUpdateInput,
@@ -50,6 +51,22 @@ export async function updateShopBilling(
   const { data } = await api.patch<ShopBillingDetail>(
     `/api/super-admin/shops/${shopId}/billing`,
     payload,
+  );
+  return data;
+}
+
+export async function listThemePresets(): Promise<ThemePresetInfo[]> {
+  const { data } = await api.get<ThemePresetInfo[]>('/api/super-admin/theme-presets');
+  return data;
+}
+
+export async function updateShopTheme(
+  shopId: number,
+  config: ThemeConfig,
+): Promise<ShopDetailResponse> {
+  const { data } = await api.put<ShopDetailResponse>(
+    `/api/super-admin/shops/${shopId}/theme`,
+    config,
   );
   return data;
 }

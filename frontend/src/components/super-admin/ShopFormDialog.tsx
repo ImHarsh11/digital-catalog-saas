@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createShop } from '@/services/superAdmin';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createShop, listThemePresets } from '@/services/superAdmin';
 import { useToast } from '@/hooks/useToast';
 import { getApiErrorMessage } from '@/utils/apiError';
 import Modal from '@/components/Modal';
@@ -58,6 +58,11 @@ export default function ShopFormDialog({ onClose, onCreated }: ShopFormDialogPro
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
+  const { data: presets } = useQuery({
+    queryKey: ['super-admin', 'theme-presets'],
+    queryFn: listThemePresets,
+  });
+
   const mutation = useMutation({
     mutationFn: (payload: ShopCreateInput) => createShop(payload),
     onSuccess: (data) => {
@@ -92,6 +97,7 @@ export default function ShopFormDialog({ onClose, onCreated }: ShopFormDialogPro
       website: form.website || undefined,
       description: form.description || undefined,
       trial_days: form.trial_days ?? 14,
+      theme_preset: form.theme_preset || undefined,
     };
     mutation.mutate(payload);
   }
@@ -162,19 +168,37 @@ export default function ShopFormDialog({ onClose, onCreated }: ShopFormDialogPro
               className={inputClass}
             />
           </Field>
-          <Field label="Trial length" hint="The shop's catalog goes offline when the trial ends unless billing is set.">
-            <select
-              value={form.trial_days ?? 14}
-              onChange={(e) => setForm((prev) => ({ ...prev, trial_days: Number(e.target.value) }))}
-              className={inputClass}
-            >
-              {TRIAL_OPTIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d} days
-                </option>
-              ))}
-            </select>
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Trial length" hint="Catalog goes offline when the trial ends unless billing is set.">
+              <select
+                value={form.trial_days ?? 14}
+                onChange={(e) => setForm((prev) => ({ ...prev, trial_days: Number(e.target.value) }))}
+                className={inputClass}
+              >
+                {TRIAL_OPTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d} days
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Theme" hint="Can be changed later on the shop's Theme tab.">
+              <select
+                value={form.theme_preset ?? ''}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, theme_preset: e.target.value || undefined }))
+                }
+                className={inputClass}
+              >
+                <option value="">Default (Royal Maroon)</option>
+                {presets?.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
         </fieldset>
 
         <fieldset className="space-y-3 border-t border-neutral-100 pt-4">

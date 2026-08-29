@@ -1,4 +1,5 @@
 import type { ProductStatus } from './product';
+import type { ResolvedTheme } from './theme';
 
 export interface PublicCategory {
   id: number;
@@ -20,6 +21,7 @@ export interface PublicShop {
 export interface PublicShopResponse {
   shop: PublicShop;
   categories: PublicCategory[];
+  theme: ResolvedTheme;
 }
 
 export interface PublicProductImage {

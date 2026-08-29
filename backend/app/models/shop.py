@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.session import Base
@@ -53,6 +54,10 @@ class Shop(Base, TimestampMixin):
     city: Mapped[str | None] = mapped_column(String(255), nullable=True)
     website: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Validated semantic theme config (see app.schemas.theme.ThemeConfig).
+    # NULL means "the default preset" -- the resolver handles it.
+    theme: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     billing: Mapped["ShopBilling"] = relationship(
         back_populates="shop",
