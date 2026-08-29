@@ -19,6 +19,7 @@ from app.api.products import router as products_router
 from app.api.public_catalog import router as public_catalog_router
 from app.api.shop_settings import router as shop_settings_router
 from app.api.super_admin import router as super_admin_router
+from app.api.webhooks import router as webhooks_router
 from app.utils.config import get_settings
 from app.utils.rate_limit import limiter
 
@@ -52,6 +53,7 @@ app.include_router(shop_settings_router)
 app.include_router(categories_router)
 app.include_router(products_router)
 app.include_router(public_catalog_router)
+app.include_router(webhooks_router)
 
 # Serves images saved by LocalImageStorage (app/services/storage.py). Only
 # meaningful when IMAGE_STORAGE_PROVIDER=local, but mounting it unconditionally

@@ -1,6 +1,29 @@
 import { api } from './api';
 import type { Lead, RichAnalytics, ShopAnalytics, ShopOwnerDashboardStats } from '@/types/dashboard';
-import type { ShopDetail, ShopUpdateInput } from '@/types/shop';
+import type {
+  InvoiceItem,
+  ShopBillingDetail,
+  ShopDetail,
+  ShopUpdateInput,
+  SubscriptionActionResponse,
+} from '@/types/shop';
+
+export async function getOwnerBilling(shopId: number): Promise<ShopBillingDetail> {
+  const { data } = await api.get<ShopBillingDetail>(`/api/shops/${shopId}/billing`);
+  return data;
+}
+
+export async function startOwnerSubscription(shopId: number): Promise<SubscriptionActionResponse> {
+  const { data } = await api.post<SubscriptionActionResponse>(
+    `/api/shops/${shopId}/billing/subscription`,
+  );
+  return data;
+}
+
+export async function getOwnerInvoices(shopId: number): Promise<InvoiceItem[]> {
+  const { data } = await api.get<InvoiceItem[]>(`/api/shops/${shopId}/invoices`);
+  return data;
+}
 
 export async function getShopOwnerDashboard(shopId: number): Promise<ShopOwnerDashboardStats> {
   const { data } = await api.get<ShopOwnerDashboardStats>(`/api/shops/${shopId}/dashboard`);

@@ -37,7 +37,7 @@ class ShopOwnerBrief(BaseModel):
 
 class ShopBillingDetail(BaseModel):
     """The Super Admin's Billing tab for one shop, and the owner's own
-    read-only billing panel. Razorpay fields arrive in Phase 5."""
+    read-only billing panel."""
 
     status: SubscriptionStatus
     trial_start_date: date | None
@@ -47,6 +47,40 @@ class ShopBillingDetail(BaseModel):
     days_remaining: int
     lifecycle_label: str
     is_catalog_live: bool
+
+    # Razorpay (Phase 5)
+    plan_code: str | None = None
+    plan_name: str | None = None
+    plan_amount: int | None = None  # paise
+    razorpay_subscription_id: str | None = None
+    mandate_status: str | None = None
+    cancel_at_period_end: bool = False
+    has_subscription: bool = False
+
+
+class SubscriptionActionResponse(BaseModel):
+    """Returned when a subscription is created -- carries the hosted
+    authorization URL the owner opens to approve the UPI autopay mandate."""
+
+    billing: ShopBillingDetail
+    authorization_url: str | None = None
+
+
+class BillingPlanInfo(BaseModel):
+    code: str
+    name: str
+    amount: int  # paise
+    currency: str
+    interval: str
+    interval_count: int
+
+
+class InvoiceItem(BaseModel):
+    amount: int  # paise
+    currency: str
+    period_start: date | None
+    period_end: date | None
+    paid_at: datetime
 
 
 class ShopCreate(BaseModel):

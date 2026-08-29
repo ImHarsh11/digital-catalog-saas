@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.product import Product
     from app.models.selection import Selection
     from app.models.shop_billing import ShopBilling
+    from app.models.subscription_invoice import SubscriptionInvoice
     from app.models.user import User
 
 # Kept in sync with app.services.shop.TRIAL_LENGTH_DAYS; duplicated here only
@@ -82,6 +83,9 @@ class Shop(Base, TimestampMixin):
     )
     selections: Mapped[list["Selection"]] = relationship(
         back_populates="shop", cascade="all, delete-orphan"
+    )
+    invoices: Mapped[list["SubscriptionInvoice"]] = relationship(
+        back_populates="shop", cascade="all, delete-orphan", order_by="SubscriptionInvoice.paid_at.desc()"
     )
 
     def __init__(self, **kw: Any) -> None:

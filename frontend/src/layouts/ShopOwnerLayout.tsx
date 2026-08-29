@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { BillingBanner } from '@/components/admin/BillingPanel';
 
 // ─── Theme helpers ────────────────────────────────────────────────────────────
 
@@ -184,6 +185,7 @@ export default function ShopOwnerLayout() {
         </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        {shop && <BillingBanner shopId={shop.id} />}
         <Outlet />
       </main>
     </div>

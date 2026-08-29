@@ -47,6 +47,18 @@ class Settings(BaseSettings):
     # used to build the `/shop/{slug}` URL a Super Admin's QR code encodes.
     catalog_base_url: str = "http://localhost:5173"
 
+    # Razorpay Subscriptions (redesign Phase 5). Test-mode keys are fine to
+    # start; swap to live keys to go to production. When key_id/secret are
+    # empty the billing service refuses to make API calls (see
+    # `razorpay_enabled`) so the app still boots and the sweep job still runs.
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    razorpay_webhook_secret: str = ""
+
+    @property
+    def razorpay_enabled(self) -> bool:
+        return bool(self.razorpay_key_id and self.razorpay_key_secret)
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

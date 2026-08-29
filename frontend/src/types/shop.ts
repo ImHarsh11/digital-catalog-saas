@@ -59,6 +59,36 @@ export interface ShopBillingDetail {
   days_remaining: number;
   lifecycle_label: string;
   is_catalog_live: boolean;
+  // Razorpay (Phase 5)
+  plan_code: string | null;
+  plan_name: string | null;
+  plan_amount: number | null; // paise
+  razorpay_subscription_id: string | null;
+  mandate_status: string | null;
+  cancel_at_period_end: boolean;
+  has_subscription: boolean;
+}
+
+export interface SubscriptionActionResponse {
+  billing: ShopBillingDetail;
+  authorization_url: string | null;
+}
+
+export interface BillingPlanInfo {
+  code: string;
+  name: string;
+  amount: number; // paise
+  currency: string;
+  interval: string;
+  interval_count: number;
+}
+
+export interface InvoiceItem {
+  amount: number; // paise
+  currency: string;
+  period_start: string | null;
+  period_end: string | null;
+  paid_at: string;
 }
 
 export interface ShopDetailResponse {

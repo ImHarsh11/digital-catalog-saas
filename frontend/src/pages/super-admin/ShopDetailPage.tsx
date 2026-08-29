@@ -1,8 +1,27 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Calendar, MapPin, Pencil, Phone, Power, QrCode } from 'lucide-react';
-import { getShopDetail, setShopStatus, updateShopBilling } from '@/services/superAdmin';
+import {
+  ArrowLeft,
+  Calendar,
+  CreditCard,
+  ExternalLink,
+  MapPin,
+  Pencil,
+  Phone,
+  Power,
+  QrCode,
+  RefreshCw,
+} from 'lucide-react';
+import {
+  cancelShopSubscription,
+  createShopSubscription,
+  getShopDetail,
+  listShopInvoices,
+  reconcileShopSubscription,
+  setShopStatus,
+  updateShopBilling,
+} from '@/services/superAdmin';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { shopStatusBadge } from '@/utils/shopStatus';
 import Spinner from '@/components/Spinner';
@@ -13,6 +32,7 @@ import ShopEditDialog from '@/components/super-admin/ShopEditDialog';
 import QrCodeModal from '@/components/super-admin/QrCodeModal';
 import ThemeTab from '@/components/super-admin/ThemeTab';
 import { useToast } from '@/hooks/useToast';
+import { formatPrice } from '@/utils/currency';
 import type { ShopBillingDetail, SubscriptionStatus } from '@/types/shop';
 
 type Tab = 'overview' | 'billing' | 'theme' | 'access';
@@ -308,10 +328,12 @@ function BillingTab({
         </dl>
       </section>
 
+      <SubscriptionSection shopId={shopId} billing={billing} onChanged={onSaved} />
+
       <section className="rounded-xl border border-neutral-200 bg-white p-5">
         <h2 className="text-sm font-semibold text-neutral-900">Adjust manually</h2>
         <p className="mt-1 text-xs text-neutral-400">
-          Until Razorpay is connected, billing state is set here by hand.
+          Overrides for support, comps, or a missed webhook. Razorpay is the normal path.
         </p>
         <form
           className="mt-4 space-y-4"
@@ -362,6 +384,148 @@ function BillingTab({
         </form>
       </section>
     </div>
+  );
+}
+
+function SubscriptionSection({
+  shopId,
+  billing,
+  onChanged,
+}: {
+  shopId: number;
+  billing: ShopBillingDetail;
+  onChanged: () => void;
+}) {
+  const { showToast } = useToast();
+
+  const invoicesQuery = useQuery({
+    queryKey: ['super-admin', 'shops', shopId, 'invoices'],
+    queryFn: () => listShopInvoices(shopId),
+    enabled: billing.has_subscription,
+  });
+
+  const create = useMutation({
+    mutationFn: () => createShopSubscription(shopId),
+    onSuccess: (res) => {
+      onChanged();
+      if (res.authorization_url) {
+        window.open(res.authorization_url, '_blank', 'noopener');
+        showToast('success', 'Subscription created — authorization page opened for the owner.');
+      } else {
+        showToast('success', 'Subscription created.');
+      }
+    },
+    onError: (err) => showToast('error', getApiErrorMessage(err, 'Could not create the subscription.')),
+  });
+
+  const cancel = useMutation({
+    mutationFn: () => cancelShopSubscription(shopId, true),
+    onSuccess: () => {
+      onChanged();
+      showToast('success', 'Subscription set to cancel at period end.');
+    },
+    onError: (err) => showToast('error', getApiErrorMessage(err, 'Could not cancel.')),
+  });
+
+  const reconcile = useMutation({
+    mutationFn: () => reconcileShopSubscription(shopId),
+    onSuccess: () => {
+      onChanged();
+      showToast('success', 'Re-synced from Razorpay.');
+    },
+    onError: (err) => showToast('error', getApiErrorMessage(err, 'Could not reconcile.')),
+  });
+
+  return (
+    <section className="rounded-xl border border-neutral-200 bg-white p-5">
+      <div className="flex items-center gap-2">
+        <CreditCard className="h-4 w-4 text-neutral-400" />
+        <h2 className="text-sm font-semibold text-neutral-900">Razorpay subscription</h2>
+      </div>
+
+      {billing.has_subscription ? (
+        <>
+          <dl className="mt-3 grid grid-cols-2 gap-y-2 text-sm">
+            <dt className="text-neutral-500">Plan</dt>
+            <dd className="text-neutral-800">
+              {billing.plan_name ?? '—'}
+              {billing.plan_amount != null && ` · ${formatPrice(billing.plan_amount / 100)}/mo`}
+            </dd>
+            <dt className="text-neutral-500">Mandate</dt>
+            <dd className="font-medium text-neutral-900">{billing.mandate_status ?? '—'}</dd>
+            <dt className="text-neutral-500">Subscription ID</dt>
+            <dd className="truncate font-mono text-xs text-neutral-500">
+              {billing.razorpay_subscription_id}
+            </dd>
+          </dl>
+
+          {billing.cancel_at_period_end && (
+            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              Scheduled to cancel at the end of the current paid period.
+            </p>
+          )}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => reconcile.mutate()}
+              disabled={reconcile.isPending}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Re-sync
+            </button>
+            {!billing.cancel_at_period_end &&
+              ['ACTIVE', 'PAST_DUE'].includes(billing.status) && (
+                <button
+                  type="button"
+                  onClick={() => cancel.mutate()}
+                  disabled={cancel.isPending}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  Cancel at period end
+                </button>
+              )}
+          </div>
+
+          {invoicesQuery.data && invoicesQuery.data.length > 0 && (
+            <div className="mt-4 border-t border-neutral-100 pt-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+                Payments
+              </p>
+              <ul className="mt-2 space-y-1.5 text-sm">
+                {invoicesQuery.data.map((inv, i) => (
+                  <li key={i} className="flex justify-between">
+                    <span className="text-neutral-500">
+                      {new Date(inv.paid_at).toLocaleDateString()}
+                    </span>
+                    <span className="font-medium tabular-nums text-neutral-800">
+                      {formatPrice(inv.amount / 100)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-neutral-500">
+            No subscription yet. Creating one generates a Razorpay authorization link for the owner
+            to approve UPI autopay.
+          </p>
+          <button
+            type="button"
+            onClick={() => create.mutate()}
+            disabled={create.isPending}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            <ExternalLink className="h-4 w-4" />
+            {create.isPending ? 'Creating…' : 'Create subscription'}
+          </button>
+        </>
+      )}
+    </section>
   );
 }
 

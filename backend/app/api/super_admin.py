@@ -17,6 +17,8 @@ from app.models.enums import UserRole
 from app.models.shop import Shop
 from app.schemas.dashboard import SuperAdminDashboardStats
 from app.schemas.shop import (
+    BillingPlanInfo,
+    InvoiceItem,
     ShopBillingDetail,
     ShopBillingUpdate,
     ShopCreate,
@@ -27,6 +29,7 @@ from app.schemas.shop import (
     ShopOwnerBrief,
     ShopStatusUpdate,
     ShopUpdate,
+    SubscriptionActionResponse,
 )
 from app.schemas.theme import ResolvedTheme, ThemeConfig, ThemePresetInfo
 from app.schemas.user import UserRead
@@ -34,7 +37,9 @@ from app.services import admin_metrics as metrics_service
 from app.services import billing as billing_service
 from app.services import qr as qr_service
 from app.services import shop as shop_service
+from app.services import subscription as subscription_service
 from app.services import theme as theme_service
+from app.services.razorpay_client import RazorpayError
 
 router = APIRouter(
     prefix="/api/super-admin",
@@ -79,17 +84,7 @@ def _to_detail(shop: Shop, product_count: int) -> ShopDetail:
 
 
 def _billing_detail(shop: Shop) -> ShopBillingDetail:
-    b = shop.billing
-    return ShopBillingDetail(
-        status=b.status,
-        trial_start_date=b.trial_start_date,
-        trial_end_date=b.trial_end_date,
-        paid_until=b.paid_until,
-        grace_until=b.grace_until,
-        days_remaining=billing_service.trial_days_remaining(shop),
-        lifecycle_label=billing_service.lifecycle_label(shop),
-        is_catalog_live=billing_service.is_catalog_live(shop),
-    )
+    return ShopBillingDetail(**billing_service.billing_summary(shop))
 
 
 def _get_shop_or_404(db: Session, shop_id: int) -> Shop:
@@ -215,10 +210,109 @@ def update_shop_status(
 def update_shop_billing(
     shop_id: int, payload: ShopBillingUpdate, db: Session = Depends(get_db)
 ) -> ShopBillingDetail:
-    """Manual billing controls until Razorpay lands (Phase 5): set the
-    lifecycle status, extend a trial, or record a paid-through date."""
+    """Manual billing overrides (extend a trial, force a status). Razorpay
+    is the normal path; this stays for support / comps / edge cases."""
     shop = _get_shop_or_404(db, shop_id)
     shop_service.update_billing(db, shop, payload)
     db.commit()
     db.refresh(shop)
     return _billing_detail(shop)
+
+
+@router.get("/billing-plans", response_model=list[BillingPlanInfo])
+def list_billing_plans(db: Session = Depends(get_db)) -> list[BillingPlanInfo]:
+    from app.models.billing_plan import BillingPlan
+
+    plans = db.query(BillingPlan).filter(BillingPlan.is_active.is_(True)).order_by(BillingPlan.id).all()
+    return [
+        BillingPlanInfo(
+            code=p.code,
+            name=p.name,
+            amount=p.amount,
+            currency=p.currency,
+            interval=p.interval,
+            interval_count=p.interval_count,
+        )
+        for p in plans
+    ]
+
+
+@router.post("/shops/{shop_id}/subscription", response_model=SubscriptionActionResponse)
+def create_subscription(
+    shop_id: int, db: Session = Depends(get_db), plan_code: str | None = None
+) -> SubscriptionActionResponse:
+    """Create a Razorpay subscription for the shop. Returns the hosted
+    authorization URL the owner opens to approve the UPI autopay mandate."""
+    shop = _get_shop_or_404(db, shop_id)
+    try:
+        billing = subscription_service.start_subscription(db, shop, plan_code=plan_code)
+    except subscription_service.SubscriptionError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except RazorpayError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Razorpay: {exc}"
+        ) from exc
+    auth_url = getattr(billing, "_short_url", None)
+    db.commit()
+    db.refresh(shop)
+    return SubscriptionActionResponse(billing=_billing_detail(shop), authorization_url=auth_url)
+
+
+@router.post("/shops/{shop_id}/subscription/cancel", response_model=ShopBillingDetail)
+def cancel_subscription(
+    shop_id: int, db: Session = Depends(get_db), at_period_end: bool = True
+) -> ShopBillingDetail:
+    shop = _get_shop_or_404(db, shop_id)
+    try:
+        subscription_service.cancel_subscription(db, shop, at_period_end=at_period_end)
+    except subscription_service.SubscriptionError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except RazorpayError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Razorpay: {exc}") from exc
+    db.commit()
+    db.refresh(shop)
+    return _billing_detail(shop)
+
+
+@router.post("/shops/{shop_id}/subscription/reconcile", response_model=ShopBillingDetail)
+def reconcile_subscription(shop_id: int, db: Session = Depends(get_db)) -> ShopBillingDetail:
+    """Re-pull the subscription state from Razorpay (for a missed webhook)."""
+    shop = _get_shop_or_404(db, shop_id)
+    try:
+        subscription_service.reconcile_from_razorpay(db, shop)
+    except subscription_service.SubscriptionError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except RazorpayError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Razorpay: {exc}") from exc
+    db.commit()
+    db.refresh(shop)
+    return _billing_detail(shop)
+
+
+@router.post("/billing/sweep")
+def run_billing_sweep(db: Session = Depends(get_db)) -> dict[str, int]:
+    """Manually run the daily lapse sweep (also runs as a scheduled job)."""
+    result = subscription_service.sweep_expired(db)
+    db.commit()
+    return result
+
+
+@router.get("/shops/{shop_id}/invoices", response_model=list[InvoiceItem])
+def list_shop_invoices(shop_id: int, db: Session = Depends(get_db)) -> list[InvoiceItem]:
+    shop = _get_shop_or_404(db, shop_id)
+    return [
+        InvoiceItem(
+            amount=inv.amount,
+            currency=inv.currency,
+            period_start=inv.period_start,
+            period_end=inv.period_end,
+            paid_at=inv.paid_at,
+        )
+        for inv in shop.invoices
+    ]

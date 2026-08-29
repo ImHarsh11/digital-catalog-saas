@@ -9,6 +9,7 @@ import { trialBadgeTone } from '@/utils/shopStatus';
 import Spinner from '@/components/Spinner';
 import ErrorState from '@/components/ErrorState';
 import Badge from '@/components/Badge';
+import { BillingCard } from '@/components/admin/BillingPanel';
 import type { ShopDetail } from '@/types/shop';
 
 const inputClass =
@@ -103,6 +104,8 @@ export default function SettingsPage() {
           <ErrorState message={getApiErrorMessage(fetchError)} onRetry={() => refetch()} />
         </div>
       )}
+
+      <BillingCard shopId={shopId} />
 
       {profile && <ProfileForm shopId={shopId} profile={profile} />}
     </div>

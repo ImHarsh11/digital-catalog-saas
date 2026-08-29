@@ -104,6 +104,27 @@ def _placeholder_image(seed: str, width: int = 800, height: int = 1000) -> str:
     return f"https://picsum.photos/seed/{seed}/{width}/{height}"
 
 
+def seed_billing_plan(db: Session) -> None:
+    """The launch plan -- Rs.999/month. In production the b8c9d0e1f2a3
+    migration inserts this row; the dev DB is built from create_all, so
+    seed it here too."""
+    from app.models.billing_plan import BillingPlan
+
+    if db.query(BillingPlan).filter(BillingPlan.code == "monthly-999").first():
+        return
+    db.add(
+        BillingPlan(
+            code="monthly-999",
+            name="Monthly",
+            amount=99900,
+            currency="INR",
+            interval="monthly",
+            interval_count=1,
+        )
+    )
+    db.flush()
+
+
 def seed_super_admin(db: Session) -> User:
     admin = db.query(User).filter(User.email == SUPER_ADMIN_EMAIL).first()
     if admin:
@@ -264,6 +285,7 @@ def seed() -> None:
     db = SessionLocal()
     try:
         print("Seeding local development data...")
+        seed_billing_plan(db)
         admin = seed_super_admin(db)
         shop = seed_demo_shop(db)
         owner = seed_demo_owner(db, shop)

@@ -76,6 +76,30 @@ def is_catalog_live(shop, *, today: date | None = None) -> bool:
     return False
 
 
+def billing_summary(shop, *, today: date | None = None) -> dict:
+    """Everything the Super Admin's Billing tab and the owner's read-only
+    billing panel need, as a plain dict (both routers wrap it in the
+    `ShopBillingDetail` schema)."""
+    b = shop.billing
+    return {
+        "status": b.status,
+        "trial_start_date": b.trial_start_date,
+        "trial_end_date": b.trial_end_date,
+        "paid_until": b.paid_until,
+        "grace_until": b.grace_until,
+        "days_remaining": trial_days_remaining(shop, today=today),
+        "lifecycle_label": lifecycle_label(shop, today=today),
+        "is_catalog_live": is_catalog_live(shop, today=today),
+        "plan_code": b.plan.code if b.plan else None,
+        "plan_name": b.plan.name if b.plan else None,
+        "plan_amount": b.plan.amount if b.plan else None,
+        "razorpay_subscription_id": b.razorpay_subscription_id,
+        "mandate_status": b.mandate_status,
+        "cancel_at_period_end": b.cancel_at_period_end,
+        "has_subscription": b.razorpay_subscription_id is not None,
+    }
+
+
 def lifecycle_label(shop, *, today: date | None = None) -> str:
     """Human-readable billing state for the Super Admin and the owner's own
     read-only billing panel."""

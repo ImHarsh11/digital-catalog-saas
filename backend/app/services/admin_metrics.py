@@ -6,9 +6,10 @@ engagement. Nothing in this module touches `customer_events`,
 dormant shops), product views, searches or sales. Those belong to the shop
 owner alone now.
 
-Revenue metrics (MRR, conversion, churn) are stubbed until Phase 5 wires
-Razorpay -- `revenue_pending` is True and the numbers are None so the
-frontend can render the cards as "coming soon" rather than as zeros.
+Revenue metrics (MRR, conversion, churn) are computed from `shop_billing`
+and `subscription_invoices` once Razorpay is live (Phase 5). Until the
+first paid subscription exists they are still meaningful (all zero / None),
+so `revenue_pending` is True only while no shop has ever subscribed.
 """
 
 from datetime import date, datetime, timedelta, timezone
@@ -17,10 +18,12 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
+from app.models.billing_plan import BillingPlan
 from app.models.catalog_activity import CatalogActivity
 from app.models.enums import SubscriptionStatus
 from app.models.shop import Shop
 from app.models.shop_billing import ShopBilling
+from app.models.subscription_invoice import SubscriptionInvoice
 from app.services import billing as billing_service
 
 TRIAL_EXPIRING_WITHIN_DAYS = 7
@@ -148,6 +151,100 @@ def _signups_series(db: Session) -> list[dict]:
     return out
 
 
+def _month_bounds_utc(ref: datetime | None = None) -> tuple[datetime, datetime]:
+    """[start, end) of the current calendar month on the business clock,
+    returned in UTC for comparing against timestamptz columns."""
+    now_ist = (ref or datetime.now(timezone.utc)).astimezone(ZoneInfo(BUSINESS_TZ_PG))
+    start_ist = now_ist.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if start_ist.month == 12:
+        next_ist = start_ist.replace(year=start_ist.year + 1, month=1)
+    else:
+        next_ist = start_ist.replace(month=start_ist.month + 1)
+    return start_ist.astimezone(timezone.utc), next_ist.astimezone(timezone.utc)
+
+
+def _revenue(db: Session) -> dict:
+    """MRR / ARR / this-month revenue / trial->paid / churn.
+
+    MRR = the monthly-normalised plan amount summed over currently-ACTIVE
+    shops. Revenue-this-month = sum of paid invoices in the current month.
+    """
+    ever_subscribed = (
+        db.query(func.count(ShopBilling.id))
+        .filter(ShopBilling.razorpay_subscription_id.isnot(None))
+        .scalar()
+        or 0
+    )
+
+    # Small N (one billing row per shop) -- normalise each active plan to a
+    # month in Python rather than fighting SQL over yearly/monthly.
+    active_plans = (
+        db.query(BillingPlan)
+        .join(ShopBilling, ShopBilling.plan_id == BillingPlan.id)
+        .filter(ShopBilling.status == SubscriptionStatus.ACTIVE)
+        .all()
+    )
+    mrr_paise = sum(p.monthly_amount for p in active_plans)
+
+    start, end = _month_bounds_utc()
+    revenue_month_paise = (
+        db.query(func.coalesce(func.sum(SubscriptionInvoice.amount), 0))
+        .filter(SubscriptionInvoice.paid_at >= start, SubscriptionInvoice.paid_at < end)
+        .scalar()
+        or 0
+    )
+
+    total_billing = db.query(func.count(ShopBilling.id)).scalar() or 0
+    converted = (
+        db.query(func.count(ShopBilling.id))
+        .filter(
+            ShopBilling.status.in_(
+                [
+                    SubscriptionStatus.ACTIVE,
+                    SubscriptionStatus.PAST_DUE,
+                    SubscriptionStatus.CANCELLED,
+                ]
+            ),
+            ShopBilling.razorpay_subscription_id.isnot(None),
+        )
+        .scalar()
+        or 0
+    )
+
+    churned = (
+        db.query(func.count(ShopBilling.id))
+        .filter(
+            ShopBilling.status.in_([SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED]),
+            ShopBilling.updated_at >= start,
+            ShopBilling.updated_at < end,
+        )
+        .scalar()
+        or 0
+    )
+
+    # Until the first shop has ever subscribed there is nothing to show --
+    # keep the "coming soon" contract (None money fields, revenue_pending).
+    if ever_subscribed == 0:
+        return {
+            "revenue_pending": True,
+            "mrr": None,
+            "arr": None,
+            "revenue_this_month": None,
+            "trial_to_paid_rate": None,
+            "churn_this_month": None,
+        }
+
+    mrr = round(mrr_paise / 100, 2)
+    return {
+        "revenue_pending": False,
+        "mrr": mrr,
+        "arr": round(mrr * 12, 2),
+        "revenue_this_month": round(revenue_month_paise / 100, 2),
+        "trial_to_paid_rate": round(100 * converted / total_billing, 1) if total_billing else None,
+        "churn_this_month": churned,
+    }
+
+
 def get_dashboard(db: Session) -> dict:
     now = datetime.now(timezone.utc)
     week_ago = now - timedelta(days=7)
@@ -166,11 +263,5 @@ def get_dashboard(db: Session) -> dict:
         "signups_series": _signups_series(db),
         "trials_expiring_soon": _trials_expiring(db),
         "dormant_shops": _dormant_shops(db),
-        # Phase 5 (Razorpay) fills these in.
-        "revenue_pending": True,
-        "mrr": None,
-        "arr": None,
-        "revenue_this_month": None,
-        "trial_to_paid_rate": None,
-        "churn_this_month": None,
+        **_revenue(db),
     }

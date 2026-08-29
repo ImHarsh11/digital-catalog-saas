@@ -18,11 +18,20 @@ from app.models.user import User
 from app.schemas.analytics import RichAnalytics, ShopAnalytics
 from app.schemas.dashboard import ShopOwnerDashboardStats
 from app.schemas.selection import Lead
-from app.schemas.shop import ShopDetail, ShopOwnerBrief, ShopUpdate
+from app.schemas.shop import (
+    InvoiceItem,
+    ShopBillingDetail,
+    ShopDetail,
+    ShopOwnerBrief,
+    ShopUpdate,
+    SubscriptionActionResponse,
+)
 from app.services import analytics as analytics_service
 from app.services import billing as billing_service
 from app.services import selection as selection_service
 from app.services import shop as shop_service
+from app.services import subscription as subscription_service
+from app.services.razorpay_client import RazorpayError
 
 router = APIRouter(prefix="/api/shops/{shop_id}", tags=["shop-settings"])
 
@@ -122,6 +131,66 @@ def get_leads(
     first, each with the products they'd selected. Owner-only."""
     _get_shop_or_404(db, shop_id)
     return [Lead(**row) for row in selection_service.list_leads(db, shop_id)]
+
+
+# --- Billing (owner: read-only status + self-serve autopay setup) --------
+
+
+@router.get("/billing", response_model=ShopBillingDetail)
+def get_billing(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_shop_owner_self),
+) -> ShopBillingDetail:
+    shop = _get_shop_or_404(db, shop_id)
+    return ShopBillingDetail(**billing_service.billing_summary(shop))
+
+
+@router.post("/billing/subscription", response_model=SubscriptionActionResponse)
+def start_billing_subscription(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_shop_owner_self),
+) -> SubscriptionActionResponse:
+    """Owner self-serve: create the Razorpay subscription and return the
+    hosted URL to approve the UPI autopay mandate."""
+    shop = _get_shop_or_404(db, shop_id)
+    try:
+        billing = subscription_service.start_subscription(db, shop)
+    except subscription_service.SubscriptionError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except RazorpayError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Payment setup failed: {exc}"
+        ) from exc
+    auth_url = getattr(billing, "_short_url", None)
+    db.commit()
+    db.refresh(shop)
+    return SubscriptionActionResponse(
+        billing=ShopBillingDetail(**billing_service.billing_summary(shop)),
+        authorization_url=auth_url,
+    )
+
+
+@router.get("/invoices", response_model=list[InvoiceItem])
+def list_invoices(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_shop_owner_self),
+) -> list[InvoiceItem]:
+    shop = _get_shop_or_404(db, shop_id)
+    return [
+        InvoiceItem(
+            amount=inv.amount,
+            currency=inv.currency,
+            period_start=inv.period_start,
+            period_end=inv.period_end,
+            paid_at=inv.paid_at,
+        )
+        for inv in shop.invoices
+    ]
 
 
 @router.put("/profile", response_model=ShopDetail)

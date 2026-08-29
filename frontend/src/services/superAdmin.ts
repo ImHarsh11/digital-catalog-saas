@@ -2,6 +2,8 @@ import { api } from './api';
 import type { SuperAdminDashboardStats } from '@/types/dashboard';
 import type { ThemeConfig, ThemePresetInfo } from '@/types/theme';
 import type {
+  BillingPlanInfo,
+  InvoiceItem,
   ShopBillingDetail,
   ShopBillingUpdateInput,
   ShopCreateInput,
@@ -10,6 +12,7 @@ import type {
   ShopDetailResponse,
   ShopListItem,
   ShopUpdateInput,
+  SubscriptionActionResponse,
 } from '@/types/shop';
 
 export async function getDashboardStats(): Promise<SuperAdminDashboardStats> {
@@ -52,6 +55,47 @@ export async function updateShopBilling(
     `/api/super-admin/shops/${shopId}/billing`,
     payload,
   );
+  return data;
+}
+
+export async function listBillingPlans(): Promise<BillingPlanInfo[]> {
+  const { data } = await api.get<BillingPlanInfo[]>('/api/super-admin/billing-plans');
+  return data;
+}
+
+export async function createShopSubscription(
+  shopId: number,
+  planCode?: string,
+): Promise<SubscriptionActionResponse> {
+  const { data } = await api.post<SubscriptionActionResponse>(
+    `/api/super-admin/shops/${shopId}/subscription`,
+    null,
+    { params: planCode ? { plan_code: planCode } : undefined },
+  );
+  return data;
+}
+
+export async function cancelShopSubscription(
+  shopId: number,
+  atPeriodEnd = true,
+): Promise<ShopBillingDetail> {
+  const { data } = await api.post<ShopBillingDetail>(
+    `/api/super-admin/shops/${shopId}/subscription/cancel`,
+    null,
+    { params: { at_period_end: atPeriodEnd } },
+  );
+  return data;
+}
+
+export async function reconcileShopSubscription(shopId: number): Promise<ShopBillingDetail> {
+  const { data } = await api.post<ShopBillingDetail>(
+    `/api/super-admin/shops/${shopId}/subscription/reconcile`,
+  );
+  return data;
+}
+
+export async function listShopInvoices(shopId: number): Promise<InvoiceItem[]> {
+  const { data } = await api.get<InvoiceItem[]>(`/api/super-admin/shops/${shopId}/invoices`);
   return data;
 }
 
