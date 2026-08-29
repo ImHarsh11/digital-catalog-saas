@@ -12,6 +12,7 @@ frontend can render the cards as "coming soon" rather than as zeros.
 """
 
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
@@ -115,6 +116,38 @@ def _new_shops(db: Session, *, since: datetime) -> int:
     )
 
 
+BUSINESS_TZ_PG = "Asia/Kolkata"
+SIGNUPS_WEEKS = 12
+
+
+def _signups_series(db: Session) -> list[dict]:
+    """Shops created per ISO week for the last ~12 weeks, bucketed on the
+    business calendar. Weeks with no signups are filled with 0 so the chart
+    has a continuous x-axis."""
+    now_ist = datetime.now(timezone.utc).astimezone(ZoneInfo(BUSINESS_TZ_PG))
+    start = (now_ist - timedelta(weeks=SIGNUPS_WEEKS - 1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    # Monday of that week
+    start -= timedelta(days=start.weekday())
+
+    bucket = func.date_trunc("week", func.timezone(BUSINESS_TZ_PG, Shop.created_at)).label("bucket")
+    rows = dict(
+        db.query(bucket, func.count(Shop.id))
+        .filter(Shop.created_at >= start.astimezone(timezone.utc))
+        .group_by(bucket)
+        .all()
+    )
+    counts = {d.date() if hasattr(d, "date") else d: n for d, n in rows.items()}
+
+    out: list[dict] = []
+    cursor = start
+    for _ in range(SIGNUPS_WEEKS):
+        out.append({"bucket": cursor.date().isoformat(), "count": counts.get(cursor.date(), 0)})
+        cursor += timedelta(weeks=1)
+    return out
+
+
 def get_dashboard(db: Session) -> dict:
     now = datetime.now(timezone.utc)
     week_ago = now - timedelta(days=7)
@@ -130,6 +163,7 @@ def get_dashboard(db: Session) -> dict:
         "by_status": _by_status(db),
         "new_shops_this_week": _new_shops(db, since=week_ago),
         "new_shops_this_month": _new_shops(db, since=month_ago),
+        "signups_series": _signups_series(db),
         "trials_expiring_soon": _trials_expiring(db),
         "dormant_shops": _dormant_shops(db),
         # Phase 5 (Razorpay) fills these in.

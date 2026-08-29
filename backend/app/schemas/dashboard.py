@@ -22,6 +22,11 @@ class DormantShopItem(BaseModel):
     last_activity_at: datetime | None
 
 
+class SignupsPoint(BaseModel):
+    bucket: str
+    count: int
+
+
 class SuperAdminDashboardStats(BaseModel):
     """Tenant-lifecycle and revenue view for the Super Admin.
 
@@ -36,6 +41,7 @@ class SuperAdminDashboardStats(BaseModel):
     by_status: dict[str, int]
     new_shops_this_week: int
     new_shops_this_month: int
+    signups_series: list[SignupsPoint]
     trials_expiring_soon: list[TrialExpiringItem]
     dormant_shops: list[DormantShopItem]
 

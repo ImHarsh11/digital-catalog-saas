@@ -17,12 +17,18 @@ export interface DormantShopItem {
   last_activity_at: string | null;
 }
 
+export interface SignupsPoint {
+  bucket: string;
+  count: number;
+}
+
 export interface SuperAdminDashboardStats {
   total_shops: number;
   live_catalogs: number;
   by_status: Record<string, number>;
   new_shops_this_week: number;
   new_shops_this_month: number;
+  signups_series: SignupsPoint[];
   trials_expiring_soon: TrialExpiringItem[];
   dormant_shops: DormantShopItem[];
   revenue_pending: boolean;

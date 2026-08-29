@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { format, parseISO } from 'date-fns';
 import { AlertTriangle, CheckCircle2, IndianRupee, MoonStar, Plus, Store } from 'lucide-react';
 import { getDashboardStats } from '@/services/superAdmin';
 import { getApiErrorMessage } from '@/utils/apiError';
 import Spinner from '@/components/Spinner';
 import ErrorState from '@/components/ErrorState';
 import Badge from '@/components/Badge';
+import { BarSeries, ChartCard } from '@/components/charts';
 import type { SuperAdminDashboardStats } from '@/types/dashboard';
 
 const STATUS_ORDER = ['TRIAL', 'ACTIVE', 'PAST_DUE', 'EXPIRED', 'SUSPENDED', 'CANCELLED'];
@@ -96,29 +98,48 @@ function DashboardBody({ data }: { data: SuperAdminDashboardStats }) {
           </ul>
         </section>
 
-        <section className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-5 lg:col-span-2">
-          <div className="flex items-center gap-2 text-neutral-500">
-            <IndianRupee className="h-4 w-4" />
-            <h2 className="text-sm font-semibold">Revenue</h2>
-          </div>
-          {data.revenue_pending ? (
-            <p className="mt-3 text-sm text-neutral-500">
-              MRR, revenue, trial&nbsp;&rarr;&nbsp;paid conversion and churn appear here once
-              Razorpay billing is connected.
-            </p>
-          ) : (
-            <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <MiniStat label="MRR" value={formatMoney(data.mrr)} />
-              <MiniStat label="ARR" value={formatMoney(data.arr)} />
-              <MiniStat label="This month" value={formatMoney(data.revenue_this_month)} />
-              <MiniStat
-                label="Trial → Paid"
-                value={data.trial_to_paid_rate != null ? `${data.trial_to_paid_rate}%` : '—'}
-              />
-            </div>
-          )}
-        </section>
+        <div className="lg:col-span-2">
+          <ChartCard
+            title="New shops"
+            subtitle="Signups per week, last 12 weeks"
+            empty={data.signups_series.every((p) => p.count === 0)}
+            emptyLabel="No signups in the last 12 weeks"
+          >
+            <BarSeries
+              data={data.signups_series.map((p) => ({
+                label: format(parseISO(p.bucket), 'MMM d'),
+                count: p.count,
+              }))}
+              dataKey="count"
+              name="New shops"
+              height={176}
+            />
+          </ChartCard>
+        </div>
       </div>
+
+      <section className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-5">
+        <div className="flex items-center gap-2 text-neutral-500">
+          <IndianRupee className="h-4 w-4" />
+          <h2 className="text-sm font-semibold">Revenue</h2>
+        </div>
+        {data.revenue_pending ? (
+          <p className="mt-3 text-sm text-neutral-500">
+            MRR, revenue, trial&nbsp;&rarr;&nbsp;paid conversion and churn appear here once Razorpay
+            billing is connected.
+          </p>
+        ) : (
+          <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <MiniStat label="MRR" value={formatMoney(data.mrr)} />
+            <MiniStat label="ARR" value={formatMoney(data.arr)} />
+            <MiniStat label="This month" value={formatMoney(data.revenue_this_month)} />
+            <MiniStat
+              label="Trial → Paid"
+              value={data.trial_to_paid_rate != null ? `${data.trial_to_paid_rate}%` : '—'}
+            />
+          </div>
+        )}
+      </section>
 
       <section className="rounded-xl border border-neutral-200 bg-white p-5">
         <div className="flex items-center gap-2">

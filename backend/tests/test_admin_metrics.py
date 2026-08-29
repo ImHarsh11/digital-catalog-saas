@@ -99,3 +99,15 @@ def test_new_shops_this_week_and_month(db_session):
     data = admin_metrics.get_dashboard(db_session)
     assert data["new_shops_this_week"] == 2
     assert data["new_shops_this_month"] == 2
+
+
+def test_signups_series_is_a_continuous_12_week_window(db_session):
+    _shop(db_session, "recent")
+    data = admin_metrics.get_dashboard(db_session)
+    series = data["signups_series"]
+    assert len(series) == 12
+    assert all(set(p) == {"bucket", "count"} for p in series)
+    # buckets are Mondays, one week apart, ascending
+    assert series == sorted(series, key=lambda p: p["bucket"])
+    # the newest bucket holds the shop we just made
+    assert series[-1]["count"] >= 1
