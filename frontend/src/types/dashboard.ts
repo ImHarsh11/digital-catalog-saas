@@ -134,6 +134,33 @@ export interface SearchInsight {
   count: number;
 }
 
+export interface SelectedProductStat {
+  product_id: number;
+  name: string;
+  primary_image_url: string | null;
+  category_id: number | null;
+  category_name: string | null;
+  add_count: number;
+}
+
+export interface LeadSelectionItem {
+  product_id: number;
+  name: string;
+  primary_image_url: string | null;
+  price: number;
+  note: string | null;
+}
+
+export interface Lead {
+  contact_id: number;
+  name: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  consent_marketing: boolean;
+  created_at: string;
+  selected_items: LeadSelectionItem[];
+}
+
 export interface RichAnalytics {
   period: string;
   date_range_start: string;
@@ -142,12 +169,14 @@ export interface RichAnalytics {
   unique_visitors: PeriodKPI;
   product_views: PeriodKPI;
   products_sold: PeriodKPI;
+  selection_adds: PeriodKPI;
   avg_visits_per_day: number;
   avg_unique_per_day: number;
   visits_series: TimeSeriesVisit[];
   sales_series: TimeSeriesSale[];
   top_viewed_products: RichProductStat[];
   top_sold_products: RichSoldProductStat[];
+  top_selected_products: SelectedProductStat[];
   category_stats: CategoryStat[];
   search_insights: SearchInsight[];
 }

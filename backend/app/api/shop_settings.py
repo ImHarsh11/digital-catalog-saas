@@ -17,9 +17,11 @@ from app.database.session import get_db
 from app.models.user import User
 from app.schemas.analytics import RichAnalytics, ShopAnalytics
 from app.schemas.dashboard import ShopOwnerDashboardStats
+from app.schemas.selection import Lead
 from app.schemas.shop import ShopDetail, ShopOwnerBrief, ShopUpdate
 from app.services import analytics as analytics_service
 from app.services import billing as billing_service
+from app.services import selection as selection_service
 from app.services import shop as shop_service
 
 router = APIRouter(prefix="/api/shops/{shop_id}", tags=["shop-settings"])
@@ -108,6 +110,18 @@ def get_rich_analytics(
     """Rich period-based analytics with time-series, comparisons, and breakdowns."""
     _get_shop_or_404(db, shop_id)
     return RichAnalytics(**analytics_service.get_rich_analytics(db, shop_id, period))
+
+
+@router.get("/leads", response_model=list[Lead])
+def get_leads(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_shop_owner_self),
+) -> list[Lead]:
+    """Customers who left contact details via the consent popup, newest
+    first, each with the products they'd selected. Owner-only."""
+    _get_shop_or_404(db, shop_id)
+    return [Lead(**row) for row in selection_service.list_leads(db, shop_id)]
 
 
 @router.put("/profile", response_model=ShopDetail)

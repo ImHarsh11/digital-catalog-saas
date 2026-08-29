@@ -273,9 +273,20 @@ function CustomerContactPopup({
   const [name, setName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
+  const [consentProcessing, setConsentProcessing] = useState(false);
+  const [consentMarketing, setConsentMarketing] = useState(false);
+
+  const hasContact = Boolean(name || whatsapp || email);
 
   const mutation = useMutation({
-    mutationFn: () => submitCustomerContact(shopSlug, { name: name || undefined, whatsapp: whatsapp || undefined, email: email || undefined }),
+    mutationFn: () =>
+      submitCustomerContact(shopSlug, {
+        name: name || undefined,
+        whatsapp: whatsapp || undefined,
+        email: email || undefined,
+        consent_processing: consentProcessing,
+        consent_marketing: consentMarketing,
+      }),
     onSuccess: () => onSubmitted(),
   });
 
@@ -294,9 +305,9 @@ function CustomerContactPopup({
           <X className="h-5 w-5" />
         </button>
 
-        <h3 className="text-lg font-semibold text-neutral-900">Stay updated!</h3>
+        <h3 className="text-lg font-semibold text-neutral-900">Let the shop help you</h3>
         <p className="mt-1 text-sm text-neutral-500">
-          Get notified about new arrivals, restocks and exclusive offers. This is completely optional.
+          Add your details so the shop can assist you faster. Completely optional.
         </p>
 
         <div className="mt-4 space-y-3">
@@ -304,23 +315,44 @@ function CustomerContactPopup({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your name (optional)"
+            placeholder="Your name"
             className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
           <input
             type="tel"
             value={whatsapp}
             onChange={(e) => setWhatsapp(e.target.value)}
-            placeholder="WhatsApp number (optional)"
+            placeholder="Mobile / WhatsApp number"
             className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email (optional)"
+            placeholder="Email"
             className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
+        </div>
+
+        <div className="mt-4 space-y-2.5">
+          <label className="flex items-start gap-2 text-xs text-neutral-600">
+            <input
+              type="checkbox"
+              checked={consentProcessing}
+              onChange={(e) => setConsentProcessing(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>Store my details so the shop can assist me.</span>
+          </label>
+          <label className="flex items-start gap-2 text-xs text-neutral-600">
+            <input
+              type="checkbox"
+              checked={consentMarketing}
+              onChange={(e) => setConsentMarketing(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>Also send me new arrivals &amp; offers.</span>
+          </label>
         </div>
 
         <div className="mt-5 flex gap-3">
@@ -334,11 +366,11 @@ function CustomerContactPopup({
           <button
             type="button"
             onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || (!name && !whatsapp && !email)}
+            disabled={mutation.isPending || !hasContact || !consentProcessing}
             className="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg, var(--catalog-primary), var(--catalog-accent))' }}
           >
-            {mutation.isPending ? 'Saving…' : 'Submit'}
+            {mutation.isPending ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>

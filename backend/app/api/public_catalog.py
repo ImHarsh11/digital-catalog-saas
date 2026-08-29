@@ -20,6 +20,8 @@ different shop 404s exactly like a nonexistent one; the URL's shop slug is
 the only source of truth for which shop's catalog is being read.
 """
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
@@ -44,8 +46,15 @@ from app.schemas.public import (
     PublicShop,
     PublicShopResponse,
 )
+from app.schemas.selection import (
+    PublicSelection,
+    PublicSelectionItem,
+    SelectionItemAdd,
+    SelectionItemNote,
+)
 from app.schemas.theme import ResolvedTheme
 from app.services import public_catalog as catalog_service
+from app.services import selection as selection_service
 from app.services import theme as theme_service
 
 router = APIRouter(prefix="/api/public/shops", tags=["public-catalog"])
@@ -228,7 +237,103 @@ def get_shop_product(
     return _to_detail(product)
 
 
-# ── Customer contact collection ───────────────────────────────────────────────
+# ── Guest selection list ─────────────────────────────────────────────────────
+
+
+def _to_public_selection(sel) -> PublicSelection:
+    if sel is None:
+        return PublicSelection(items=[], count=0, contact_captured=False)
+    return PublicSelection(
+        items=[
+            PublicSelectionItem(product=_to_list_item(i.product), note=i.note, added_at=i.added_at)
+            for i in sel.items
+        ],
+        count=len(sel.items),
+        contact_captured=sel.customer_contact_id is not None,
+    )
+
+
+def _require_device_id(device_id: str | None) -> str:
+    if not device_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing device id."
+        )
+    return device_id[:64]
+
+
+@router.get("/{shop_slug}/selection", response_model=PublicSelection)
+@limiter.limit("60/minute")
+def get_selection(
+    request: Request,
+    shop_slug: str,
+    db: Session = Depends(get_db),
+    device_id: str | None = Header(default=None, alias="X-Device-Id", max_length=64),
+) -> PublicSelection:
+    shop = _get_shop_or_error(db, shop_slug)
+    if not device_id:
+        return PublicSelection(items=[], count=0, contact_captured=False)
+    return _to_public_selection(selection_service.get_selection(db, shop.id, device_id))
+
+
+@router.post("/{shop_slug}/selection/items", response_model=PublicSelection)
+@limiter.limit("60/minute")
+def add_selection_item(
+    request: Request,
+    shop_slug: str,
+    payload: SelectionItemAdd,
+    db: Session = Depends(get_db),
+    device_id: str | None = Header(default=None, alias="X-Device-Id", max_length=64),
+) -> PublicSelection:
+    shop = _get_shop_or_error(db, shop_slug)
+    dev = _require_device_id(device_id)
+    sel = selection_service.add_item(db, shop.id, dev, payload.product_id, payload.note)
+    if sel is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
+    db.commit()
+    db.refresh(sel)
+    return _to_public_selection(sel)
+
+
+@router.patch("/{shop_slug}/selection/items/{product_id}", response_model=PublicSelection)
+@limiter.limit("60/minute")
+def update_selection_item(
+    request: Request,
+    shop_slug: str,
+    product_id: int,
+    payload: SelectionItemNote,
+    db: Session = Depends(get_db),
+    device_id: str | None = Header(default=None, alias="X-Device-Id", max_length=64),
+) -> PublicSelection:
+    shop = _get_shop_or_error(db, shop_slug)
+    dev = _require_device_id(device_id)
+    sel = selection_service.set_note(db, shop.id, dev, product_id, payload.note)
+    db.commit()
+    if sel is None:
+        return PublicSelection(items=[], count=0, contact_captured=False)
+    db.refresh(sel)
+    return _to_public_selection(sel)
+
+
+@router.delete("/{shop_slug}/selection/items/{product_id}", response_model=PublicSelection)
+@limiter.limit("60/minute")
+def remove_selection_item(
+    request: Request,
+    shop_slug: str,
+    product_id: int,
+    db: Session = Depends(get_db),
+    device_id: str | None = Header(default=None, alias="X-Device-Id", max_length=64),
+) -> PublicSelection:
+    shop = _get_shop_or_error(db, shop_slug)
+    dev = _require_device_id(device_id)
+    sel = selection_service.remove_item(db, shop.id, dev, product_id)
+    db.commit()
+    if sel is None:
+        return PublicSelection(items=[], count=0, contact_captured=False)
+    db.refresh(sel)
+    return _to_public_selection(sel)
+
+
+# ── Consent popup ────────────────────────────────────────────────────────────
 
 
 @router.post("/{shop_slug}/contacts", response_model=CustomerContactResponse, status_code=status.HTTP_201_CREATED)
@@ -239,17 +344,28 @@ def submit_customer_contact(
     payload: CustomerContactCreate,
     db: Session = Depends(get_db),
     anon_session_id: str | None = Header(default=None, alias="X-Anon-Session-Id", max_length=64),
+    device_id: str | None = Header(default=None, alias="X-Device-Id", max_length=64),
 ) -> CustomerContactResponse:
-    """Accept optional customer contact info from the catalog popup."""
+    """Store optional customer details from the consent popup and, if this
+    device has a selection, link it so the owner's Leads view can show what
+    they picked."""
     shop = _get_shop_or_error(db, shop_slug)
+    now = datetime.now(timezone.utc)
     contact = CustomerContact(
         shop_id=shop.id,
         name=payload.name,
         whatsapp=payload.whatsapp,
         email=payload.email,
         anonymous_session_id=anon_session_id[:64] if anon_session_id else None,
+        device_id=device_id[:64] if device_id else None,
+        consent_processing=payload.consent_processing,
+        consent_marketing=payload.consent_marketing,
+        consent_version=selection_service.CONSENT_VERSION,
+        consent_at=now,
     )
     db.add(contact)
+    db.flush()
+    selection_service.link_contact(db, contact)
     db.commit()
     db.refresh(contact)
     return CustomerContactResponse(
@@ -257,6 +373,7 @@ def submit_customer_contact(
         name=contact.name,
         whatsapp=contact.whatsapp,
         email=contact.email,
+        consent_marketing=contact.consent_marketing,
     )
 
 

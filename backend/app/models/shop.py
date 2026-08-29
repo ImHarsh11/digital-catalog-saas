@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from app.models.category import Category
     from app.models.customer_event import CustomerEvent
     from app.models.product import Product
+    from app.models.selection import Selection
     from app.models.shop_billing import ShopBilling
     from app.models.user import User
 
@@ -77,6 +78,9 @@ class Shop(Base, TimestampMixin):
         back_populates="shop", cascade="all, delete-orphan"
     )
     customer_events: Mapped[list["CustomerEvent"]] = relationship(
+        back_populates="shop", cascade="all, delete-orphan"
+    )
+    selections: Mapped[list["Selection"]] = relationship(
         back_populates="shop", cascade="all, delete-orphan"
     )
 

@@ -97,6 +97,15 @@ class SearchInsight(BaseModel):
     count: int
 
 
+class SelectedProductStat(BaseModel):
+    product_id: int
+    name: str
+    primary_image_url: str | None
+    category_id: int | None
+    category_name: str | None
+    add_count: int
+
+
 class RichAnalytics(BaseModel):
     """Comprehensive period-based analytics returned by /analytics/rich."""
 
@@ -109,6 +118,7 @@ class RichAnalytics(BaseModel):
     unique_visitors: PeriodKPI
     product_views: PeriodKPI
     products_sold: PeriodKPI
+    selection_adds: PeriodKPI
 
     # Averages
     avg_visits_per_day: float
@@ -121,6 +131,7 @@ class RichAnalytics(BaseModel):
     # Top lists
     top_viewed_products: list[RichProductStat]
     top_sold_products: list[RichSoldProductStat]
+    top_selected_products: list[SelectedProductStat]
 
     # Breakdowns
     category_stats: list[CategoryStat]

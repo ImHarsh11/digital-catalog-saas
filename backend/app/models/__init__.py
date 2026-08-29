@@ -19,6 +19,7 @@ from app.models.enums import (
 from app.models.product import Product
 from app.models.product_image import ProductImage
 from app.models.product_like import ProductLike
+from app.models.selection import Selection, SelectionItem
 from app.models.shop import Shop
 from app.models.shop_billing import ShopBilling
 from app.models.user import User
@@ -34,6 +35,8 @@ __all__ = [
     "ProductImage",
     "ProductLike",
     "ProductStatus",
+    "Selection",
+    "SelectionItem",
     "Shop",
     "ShopBilling",
     "SubscriptionStatus",

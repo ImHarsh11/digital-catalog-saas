@@ -72,17 +72,26 @@ class PublicProductPage(BaseModel):
 
 
 class CustomerContactCreate(BaseModel):
-    """Payload for the optional customer contact popup.
-    At least one contact field must be provided so we don't store
-    completely empty rows."""
+    """Payload for the optional consent popup on the public catalog.
+
+    At least one contact field must be provided, and ``consent_processing``
+    must be true -- storing the details is what the popup exists to do, so
+    submitting without that consent is meaningless. ``consent_marketing``
+    is separate and optional (DPDP Act 2023 -- unbundled consent).
+    """
+
     name: str | None = Field(default=None, max_length=255)
     whatsapp: str | None = Field(default=None, max_length=20)
     email: str | None = Field(default=None, max_length=255)
+    consent_processing: bool = False
+    consent_marketing: bool = False
 
     @model_validator(mode="after")
-    def at_least_one_field(self) -> "CustomerContactCreate":
+    def _valid(self) -> "CustomerContactCreate":
         if not any([self.name, self.whatsapp, self.email]):
             raise ValueError("At least one of name, whatsapp, or email must be provided.")
+        if not self.consent_processing:
+            raise ValueError("Consent to store the details is required.")
         return self
 
 
@@ -91,6 +100,7 @@ class CustomerContactResponse(BaseModel):
     name: str | None
     whatsapp: str | None
     email: str | None
+    consent_marketing: bool
 
 
 class ProductLikeResponse(BaseModel):

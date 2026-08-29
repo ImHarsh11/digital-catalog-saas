@@ -59,3 +59,4 @@ class CustomerEventType(str, enum.Enum):
     PRODUCT_VIEW = "PRODUCT_VIEW"
     SEARCH = "SEARCH"
     CATEGORY_VIEW = "CATEGORY_VIEW"
+    ADD_TO_SELECTION = "ADD_TO_SELECTION"

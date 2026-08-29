@@ -321,6 +321,45 @@ def _top_viewed_products_rich(
     ]
 
 
+def _top_selected_products_rich(
+    db: Session, shop_id: int, start: datetime, end: datetime, n: int = TOP_N_RICH
+) -> list[dict]:
+    rows = (
+        db.query(
+            Product.id,
+            Product.name,
+            Product.primary_image_url,
+            Category.id.label("category_id"),
+            Category.name.label("category_name"),
+            func.count(CustomerEvent.id).label("add_count"),
+        )
+        .join(CustomerEvent, CustomerEvent.product_id == Product.id)
+        .outerjoin(Category, Category.id == Product.category_id)
+        .filter(
+            CustomerEvent.shop_id == shop_id,
+            CustomerEvent.event_type == CustomerEventType.ADD_TO_SELECTION,
+            CustomerEvent.product_id.isnot(None),
+            CustomerEvent.created_at >= start,
+            CustomerEvent.created_at < end,
+        )
+        .group_by(Product.id, Product.name, Product.primary_image_url, Category.id, Category.name)
+        .order_by(func.count(CustomerEvent.id).desc())
+        .limit(n)
+        .all()
+    )
+    return [
+        {
+            "product_id": r.id,
+            "name": r.name,
+            "primary_image_url": r.primary_image_url,
+            "category_id": r.category_id,
+            "category_name": r.category_name,
+            "add_count": r.add_count,
+        }
+        for r in rows
+    ]
+
+
 def _top_sold_products_rich(
     db: Session, shop_id: int, start: datetime, end: datetime, n: int = TOP_N_RICH
 ) -> list[dict]:
@@ -462,6 +501,9 @@ def get_rich_analytics(db: Session, shop_id: int, period: str = "7d") -> dict:
     sold = _count_sales(db, shop_id, start, end)
     prev_sold = _count_sales(db, shop_id, prev_start, prev_end)
 
+    adds = _count_events(db, shop_id, CustomerEventType.ADD_TO_SELECTION, start, end)
+    prev_adds = _count_events(db, shop_id, CustomerEventType.ADD_TO_SELECTION, prev_start, prev_end)
+
     # ── Averages ──────────────────────────────────────────────────────────────
     duration_days = max(1, (end - start).total_seconds() / 86400)
 
@@ -490,6 +532,11 @@ def get_rich_analytics(db: Session, shop_id: int, period: str = "7d") -> dict:
             "previous": prev_sold,
             "change": _pct_change(sold, prev_sold),
         },
+        "selection_adds": {
+            "current": adds,
+            "previous": prev_adds,
+            "change": _pct_change(adds, prev_adds),
+        },
         # Averages
         "avg_visits_per_day": round(visits / duration_days, 1),
         "avg_unique_per_day": round(unique / duration_days, 1),
@@ -499,6 +546,7 @@ def get_rich_analytics(db: Session, shop_id: int, period: str = "7d") -> dict:
         # Top lists
         "top_viewed_products": _top_viewed_products_rich(db, shop_id, start, end),
         "top_sold_products": _top_sold_products_rich(db, shop_id, start, end),
+        "top_selected_products": _top_selected_products_rich(db, shop_id, start, end),
         # Breakdowns
         "category_stats": _category_stats_rich(db, shop_id, start, end),
         "search_insights": _search_insights_rich(db, shop_id, start, end),

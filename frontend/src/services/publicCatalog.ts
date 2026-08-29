@@ -5,6 +5,7 @@ import type {
   ProductLikeResponse,
   PublicProductDetail,
   PublicProductPage,
+  PublicSelection,
   PublicShopResponse,
 } from '@/types/publicCatalog';
 
@@ -80,6 +81,47 @@ export async function getProductLikeStatus(
 ): Promise<ProductLikeResponse> {
   const { data } = await publicApi.get<ProductLikeResponse>(
     `/api/public/shops/${shopSlug}/products/${productId}/like`,
+  );
+  return data;
+}
+
+// ── Guest selection list ────────────────────────────────────────────────────
+
+export async function getSelection(shopSlug: string): Promise<PublicSelection> {
+  const { data } = await publicApi.get<PublicSelection>(`/api/public/shops/${shopSlug}/selection`);
+  return data;
+}
+
+export async function addSelectionItem(
+  shopSlug: string,
+  productId: number,
+  note?: string,
+): Promise<PublicSelection> {
+  const { data } = await publicApi.post<PublicSelection>(
+    `/api/public/shops/${shopSlug}/selection/items`,
+    { product_id: productId, note: note ?? null },
+  );
+  return data;
+}
+
+export async function removeSelectionItem(
+  shopSlug: string,
+  productId: number,
+): Promise<PublicSelection> {
+  const { data } = await publicApi.delete<PublicSelection>(
+    `/api/public/shops/${shopSlug}/selection/items/${productId}`,
+  );
+  return data;
+}
+
+export async function updateSelectionNote(
+  shopSlug: string,
+  productId: number,
+  note: string,
+): Promise<PublicSelection> {
+  const { data } = await publicApi.patch<PublicSelection>(
+    `/api/public/shops/${shopSlug}/selection/items/${productId}`,
+    { note },
   );
   return data;
 }

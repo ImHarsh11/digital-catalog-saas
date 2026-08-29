@@ -62,6 +62,8 @@ export interface CustomerContactInput {
   name?: string;
   whatsapp?: string;
   email?: string;
+  consent_processing: boolean;
+  consent_marketing: boolean;
 }
 
 export interface CustomerContactResponse {
@@ -69,6 +71,19 @@ export interface CustomerContactResponse {
   name: string | null;
   whatsapp: string | null;
   email: string | null;
+  consent_marketing: boolean;
+}
+
+export interface PublicSelectionItem {
+  product: PublicProductListItem;
+  note: string | null;
+  added_at: string;
+}
+
+export interface PublicSelection {
+  items: PublicSelectionItem[];
+  count: number;
+  contact_captured: boolean;
 }
 
 export interface ProductLikeResponse {

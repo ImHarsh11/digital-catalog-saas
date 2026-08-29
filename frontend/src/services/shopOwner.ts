@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { RichAnalytics, ShopAnalytics, ShopOwnerDashboardStats } from '@/types/dashboard';
+import type { Lead, RichAnalytics, ShopAnalytics, ShopOwnerDashboardStats } from '@/types/dashboard';
 import type { ShopDetail, ShopUpdateInput } from '@/types/shop';
 
 export async function getShopOwnerDashboard(shopId: number): Promise<ShopOwnerDashboardStats> {
@@ -16,6 +16,11 @@ export async function getRichAnalytics(shopId: number, period: string): Promise<
   const { data } = await api.get<RichAnalytics>(`/api/shops/${shopId}/analytics/rich`, {
     params: { period },
   });
+  return data;
+}
+
+export async function getLeads(shopId: number): Promise<Lead[]> {
+  const { data } = await api.get<Lead[]>(`/api/shops/${shopId}/leads`);
   return data;
 }
 
