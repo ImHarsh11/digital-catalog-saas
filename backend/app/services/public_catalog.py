@@ -313,6 +313,12 @@ def get_product(db: Session, shop_id: int, product_id: int) -> Product | None:
     )
 
 
+# A returning visitor within this window (same tab/session) does not add a
+# second SHOP_VIEW -- keeps "Visits" meaning "browsing sessions", not "page
+# loads" (back-navigation, refreshes).
+SHOP_VIEW_DEDUP_MINUTES = 30
+
+
 def record_event(
     db: Session,
     shop_id: int,
@@ -322,20 +328,44 @@ def record_event(
     category_id: int | None = None,
     search_query: str | None = None,
     session_id: str | None = None,
+    device_id: str | None = None,
 ) -> None:
     """Fire-and-forget anonymous analytics write. No personal information is
-    collected -- `session_id` is an opaque, browser-generated identifier the
-    frontend never ties to any account (customers don't have one).
-    `category_id` (CATEGORY_VIEW) and `search_query` (SEARCH) let the Phase 6
-    shop-owner analytics dashboard surface top categories/search terms;
-    both are simply left null for every other event type."""
+    collected -- `session_id` (per-tab) and `device_id` (persistent, per
+    browser) are opaque, browser-generated identifiers never tied to any
+    account. `category_id` (CATEGORY_VIEW) and `search_query` (SEARCH) let
+    the shop-owner analytics dashboard surface top categories/search terms;
+    both are simply left null for every other event type.
+
+    SHOP_VIEW is de-duplicated within `SHOP_VIEW_DEDUP_MINUTES` per session
+    so repeatedly returning to the catalog in one visit counts as one visit.
+    """
+    sid = session_id[:64] if session_id else None
+    did = device_id[:64] if device_id else None
+
+    if event_type == CustomerEventType.SHOP_VIEW and sid:
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=SHOP_VIEW_DEDUP_MINUTES)
+        recent = (
+            db.query(CustomerEvent.id)
+            .filter(
+                CustomerEvent.shop_id == shop_id,
+                CustomerEvent.event_type == CustomerEventType.SHOP_VIEW,
+                CustomerEvent.anonymous_session_id == sid,
+                CustomerEvent.created_at >= cutoff,
+            )
+            .first()
+        )
+        if recent is not None:
+            return
+
     db.add(
         CustomerEvent(
             shop_id=shop_id,
             product_id=product_id,
             category_id=category_id,
             event_type=event_type,
-            anonymous_session_id=session_id[:64] if session_id else None,
+            anonymous_session_id=sid,
+            device_id=did,
             search_query=search_query[:255] if search_query else None,
         )
     )

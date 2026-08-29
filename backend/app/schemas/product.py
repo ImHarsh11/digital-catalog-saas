@@ -81,6 +81,14 @@ class ProductStatusUpdate(BaseModel):
     status: ProductStatus
 
 
+class ProductStockAdjust(BaseModel):
+    """Change a product's stock. `action="sell"` records a sale (decrements
+    and logs it); `action="add"` is a restock. `count` defaults to 1."""
+
+    action: str = Field(pattern="^(sell|add)$")
+    count: int = Field(default=1, ge=1, le=999)
+
+
 class ProductListItem(BaseModel):
     id: int
     shop_id: int

@@ -189,6 +189,50 @@ def set_product_status(db: Session, product: Product, new_status: ProductStatus,
     return product
 
 
+def adjust_stock(db: Session, product: Product, *, action: str, count: int, actor: User) -> Product:
+    """Sell or restock units.
+
+    - ``sell``: quantity -= count (floored at 0). Each unit sold is logged as
+      its own PRODUCT_MARKED_SOLD activity so the sales analytics stay a true
+      per-unit count. When quantity reaches 0 the product auto-flips to SOLD.
+    - ``add``: quantity += count. If the product was SOLD it flips back to
+      AVAILABLE (a restock).
+
+    OUT_OF_STOCK is left alone -- that's a deliberate "temporarily off the
+    catalog" state the owner sets/clears explicitly via set_product_status.
+    """
+    if action == "sell":
+        sold = min(count, product.quantity_available)
+        product.quantity_available -= sold
+        for _ in range(sold):
+            db.add(
+                CatalogActivity(
+                    shop_id=product.shop_id,
+                    product_id=product.id,
+                    user_id=actor.id,
+                    action=CatalogAction.PRODUCT_MARKED_SOLD,
+                    activity_metadata={"product_name": product.name},
+                )
+            )
+        if product.quantity_available == 0 and product.status == ProductStatus.AVAILABLE:
+            product.status = ProductStatus.SOLD
+    else:  # add
+        product.quantity_available += count
+        if product.status == ProductStatus.SOLD:
+            product.status = ProductStatus.AVAILABLE
+            db.add(
+                CatalogActivity(
+                    shop_id=product.shop_id,
+                    product_id=product.id,
+                    user_id=actor.id,
+                    action=CatalogAction.PRODUCT_MARKED_AVAILABLE,
+                    activity_metadata={"product_name": product.name},
+                )
+            )
+    db.flush()
+    return product
+
+
 def delete_product(db: Session, product: Product, actor: User) -> list[str]:
     """Deletes the product (cascades to its ProductImage rows). Returns the
     distinct image URLs the caller should remove from storage after the

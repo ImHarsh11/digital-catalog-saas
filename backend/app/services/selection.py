@@ -75,6 +75,7 @@ def add_item(
                 product_id=product_id,
                 event_type=CustomerEventType.ADD_TO_SELECTION,
                 anonymous_session_id=device_id[:64],
+                device_id=device_id[:64],
             )
         )
     sel.updated_at = datetime.now(timezone.utc)

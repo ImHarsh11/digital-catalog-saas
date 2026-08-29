@@ -53,6 +53,19 @@ export async function setProductStatus(
   return data;
 }
 
+export async function adjustProductStock(
+  shopId: number,
+  productId: number,
+  action: 'sell' | 'add',
+  count = 1,
+): Promise<ProductDetail> {
+  const { data } = await api.patch<ProductDetail>(
+    `/api/shops/${shopId}/products/${productId}/stock`,
+    { action, count },
+  );
+  return data;
+}
+
 export async function deleteProduct(shopId: number, productId: number): Promise<void> {
   await api.delete(`/api/shops/${shopId}/products/${productId}`);
 }

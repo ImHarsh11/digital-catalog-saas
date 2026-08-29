@@ -191,19 +191,25 @@ def _count_events(
     )
 
 
+# The persistent per-device id is the real "who" — a repeat QR scan from the
+# same phone reuses it. Older events (pre-Phase-7) have no device_id, so
+# fall back to the per-tab session id for those.
+_VISITOR_KEY = func.coalesce(CustomerEvent.device_id, CustomerEvent.anonymous_session_id)
+
+
 def _count_unique_visitors(
     db: Session, shop_id: int, event_type: CustomerEventType, start: datetime, end: datetime
 ) -> int:
-    """Count distinct anonymous_session_id values (NULLs excluded — they represent
-    visitors who didn't send a session header and can't be de-duplicated)."""
+    """Count distinct visitors -- keyed by the persistent device id where we
+    have one, else the per-tab session id. NULLs (no header at all) excluded."""
     return (
-        db.query(func.count(sa_distinct(CustomerEvent.anonymous_session_id)))
+        db.query(func.count(sa_distinct(_VISITOR_KEY)))
         .filter(
             CustomerEvent.shop_id == shop_id,
             CustomerEvent.event_type == event_type,
             CustomerEvent.created_at >= start,
             CustomerEvent.created_at < end,
-            CustomerEvent.anonymous_session_id.isnot(None),
+            _VISITOR_KEY.isnot(None),
         )
         .scalar()
         or 0
@@ -239,7 +245,7 @@ def _visits_series(db: Session, shop_id: int, period: str, start: datetime, end:
         db.query(
             bucket_col,
             func.count(CustomerEvent.id).label("visits"),
-            func.count(sa_distinct(CustomerEvent.anonymous_session_id)).label("unique_visitors"),
+            func.count(sa_distinct(_VISITOR_KEY)).label("unique_visitors"),
         )
         .filter(
             CustomerEvent.shop_id == shop_id,
@@ -408,7 +414,7 @@ def _category_stats_rich(
             Category.id,
             Category.name,
             func.count(CustomerEvent.id).label("views"),
-            func.count(sa_distinct(CustomerEvent.anonymous_session_id)).label("unique_visitors"),
+            func.count(sa_distinct(_VISITOR_KEY)).label("unique_visitors"),
         )
         .join(CustomerEvent, CustomerEvent.category_id == Category.id)
         .filter(

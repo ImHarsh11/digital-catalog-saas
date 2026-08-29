@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, ImageOff, Package, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { ImageOff, Minus, Package, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { listCategories } from '@/services/categories';
-import { deleteProduct, listProducts, setProductStatus } from '@/services/products';
+import { adjustProductStock, deleteProduct, listProducts, setProductStatus } from '@/services/products';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { formatPrice } from '@/utils/currency';
 import { productStatusBadge } from '@/utils/productStatus';
@@ -77,6 +77,26 @@ export default function ProductsPage() {
     onError: (err) => {
       showToast('error', getApiErrorMessage(err, 'Could not update the product status.'));
     },
+  });
+
+  const stockMutation = useMutation({
+    mutationFn: ({ productId, action }: { productId: number; action: 'sell' | 'add' }) =>
+      adjustProductStock(shopId, productId, action),
+    onSuccess: (updated, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['shop-owner', 'products', shopId] });
+      queryClient.invalidateQueries({ queryKey: ['shop-owner', 'dashboard', shopId] });
+      if (vars.action === 'sell') {
+        showToast(
+          'success',
+          updated.status === 'SOLD'
+            ? `${updated.name} — last piece sold, now off the catalog.`
+            : `Sold one ${updated.name}. ${updated.quantity_available} left.`,
+        );
+      } else {
+        showToast('success', `${updated.name} restocked — ${updated.quantity_available} in stock.`);
+      }
+    },
+    onError: (err) => showToast('error', getApiErrorMessage(err, 'Could not update stock.')),
   });
 
   const deleteMutation = useMutation({
@@ -220,6 +240,34 @@ export default function ProductsPage() {
                     </p>
                   )}
 
+                  {/* Stock control — "−" records a sale (auto-Sold at 0), "+" restocks */}
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-label="Record a sale"
+                      onClick={() => stockMutation.mutate({ productId: product.id, action: 'sell' })}
+                      disabled={stockMutation.isPending || product.quantity_available === 0}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-50 disabled:opacity-40 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="min-w-[4.5rem] text-center text-sm font-medium tabular-nums text-neutral-800 dark:text-neutral-200">
+                      {product.status === 'SOLD' ? 'Sold out' : `${product.quantity_available} in stock`}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Add stock"
+                      onClick={() => stockMutation.mutate({ productId: product.id, action: 'add' })}
+                      disabled={stockMutation.isPending}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-300 text-neutral-600 hover:bg-neutral-50 disabled:opacity-40 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <p className="mt-1 text-[11px] text-neutral-400">
+                    Tap <span className="font-semibold">−</span> each time a piece sells
+                  </p>
+
                   <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
                     <Link
                       to={`/admin/products/${product.id}/edit`}
@@ -228,7 +276,7 @@ export default function ProductsPage() {
                       <Pencil className="h-3.5 w-3.5" />
                       Edit
                     </Link>
-                    {product.status === 'SOLD' ? (
+                    {product.status === 'OUT_OF_STOCK' && (
                       <button
                         type="button"
                         onClick={() => statusMutation.mutate({ productId: product.id, newStatus: 'AVAILABLE' })}
@@ -236,17 +284,17 @@ export default function ProductsPage() {
                         className="inline-flex items-center gap-1 rounded-lg border border-green-200 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-60 dark:border-green-900 dark:text-green-400 dark:hover:bg-green-950"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
-                        Mark Available
+                        Back in stock
                       </button>
-                    ) : (
+                    )}
+                    {product.status === 'AVAILABLE' && (
                       <button
                         type="button"
-                        onClick={() => statusMutation.mutate({ productId: product.id, newStatus: 'SOLD' })}
+                        onClick={() => statusMutation.mutate({ productId: product.id, newStatus: 'OUT_OF_STOCK' })}
                         disabled={statusMutation.isPending}
                         className="inline-flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                       >
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Mark Sold
+                        Hide (out of stock)
                       </button>
                     )}
                     <button

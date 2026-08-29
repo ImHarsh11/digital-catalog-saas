@@ -23,6 +23,7 @@ from app.schemas.product import (
     ProductImageUploadResponse,
     ProductListItem,
     ProductStatusUpdate,
+    ProductStockAdjust,
     ProductUpdate,
 )
 from app.services import product as product_service
@@ -160,6 +161,25 @@ def update_product_status(
 ) -> ProductDetail:
     product = _get_product_or_404(db, shop_id, product_id)
     product_service.set_product_status(db, product, payload.status, current_user)
+    db.commit()
+    product = _get_product_or_404(db, shop_id, product_id)
+    return _to_detail(product)
+
+
+@router.patch("/{product_id}/stock", response_model=ProductDetail)
+def adjust_product_stock(
+    shop_id: int,
+    product_id: int,
+    payload: ProductStockAdjust,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_shop_access),
+) -> ProductDetail:
+    """Record a sale (`sell`) or a restock (`add`). Selling the last unit
+    auto-marks the product Sold; restocking a Sold product makes it live."""
+    product = _get_product_or_404(db, shop_id, product_id)
+    product_service.adjust_stock(
+        db, product, action=payload.action, count=payload.count, actor=current_user
+    )
     db.commit()
     product = _get_product_or_404(db, shop_id, product_id)
     return _to_detail(product)

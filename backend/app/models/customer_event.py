@@ -43,6 +43,10 @@ class CustomerEvent(Base):
     # Anonymous, ephemeral, browser-generated session id — not tied to any
     # personal identity. Used only to de-duplicate/session-group events.
     anonymous_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Persistent (localStorage) per-device id. Anonymous, no personal data.
+    # Preferred key for "unique visitors" — survives closing the tab, so a
+    # repeat QR scan from the same phone is the same visitor (Phase 7).
+    device_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     # The raw search text for a SEARCH event (null for every other event
     # type). Not collected in Phase 5 -- added in Phase 6 so the pilot
     # analytics dashboard can surface top searched terms; existing rows

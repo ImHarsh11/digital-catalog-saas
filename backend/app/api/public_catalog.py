@@ -112,10 +112,13 @@ def get_shop_catalog(
     shop_slug: str,
     db: Session = Depends(get_db),
     anon_session_id: str | None = Header(default=None, alias="X-Anon-Session-Id", max_length=64),
+    device_id: str | None = Header(default=None, alias="X-Device-Id", max_length=64),
 ) -> PublicShopResponse:
     shop = _get_shop_or_error(db, shop_slug)
     categories = catalog_service.list_categories(db, shop.id)
-    catalog_service.record_event(db, shop.id, CustomerEventType.SHOP_VIEW, session_id=anon_session_id)
+    catalog_service.record_event(
+        db, shop.id, CustomerEventType.SHOP_VIEW, session_id=anon_session_id, device_id=device_id
+    )
     db.commit()
     return PublicShopResponse(
         shop=PublicShop(
@@ -156,6 +159,7 @@ def list_shop_products(
     new_within_days: int | None = Query(default=None, ge=1, le=90),
     db: Session = Depends(get_db),
     anon_session_id: str | None = Header(default=None, alias="X-Anon-Session-Id", max_length=64),
+    device_id: str | None = Header(default=None, alias="X-Device-Id", max_length=64),
 ) -> PublicProductPage:
     shop = _get_shop_or_error(db, shop_slug)
 
@@ -186,11 +190,21 @@ def list_shop_products(
     # category), so both are logged independently rather than one winning.
     if search:
         catalog_service.record_event(
-            db, shop.id, CustomerEventType.SEARCH, search_query=search, session_id=anon_session_id
+            db,
+            shop.id,
+            CustomerEventType.SEARCH,
+            search_query=search,
+            session_id=anon_session_id,
+            device_id=device_id,
         )
     if category_id is not None:
         catalog_service.record_event(
-            db, shop.id, CustomerEventType.CATEGORY_VIEW, category_id=category_id, session_id=anon_session_id
+            db,
+            shop.id,
+            CustomerEventType.CATEGORY_VIEW,
+            category_id=category_id,
+            session_id=anon_session_id,
+            device_id=device_id,
         )
     db.commit()
 
@@ -230,6 +244,7 @@ def get_shop_product(
     product_id: int,
     db: Session = Depends(get_db),
     anon_session_id: str | None = Header(default=None, alias="X-Anon-Session-Id", max_length=64),
+    device_id: str | None = Header(default=None, alias="X-Device-Id", max_length=64),
 ) -> PublicProductDetail:
     shop = _get_shop_or_error(db, shop_slug)
     product = catalog_service.get_product(db, shop.id, product_id)
@@ -237,7 +252,12 @@ def get_shop_product(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
 
     catalog_service.record_event(
-        db, shop.id, CustomerEventType.PRODUCT_VIEW, product_id=product.id, session_id=anon_session_id
+        db,
+        shop.id,
+        CustomerEventType.PRODUCT_VIEW,
+        product_id=product.id,
+        session_id=anon_session_id,
+        device_id=device_id,
     )
     db.commit()
     return _to_detail(product)
