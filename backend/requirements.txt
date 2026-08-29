@@ -13,5 +13,9 @@ cloudinary==1.41.0
 email-validator==2.2.0
 qrcode[pil]==8.0
 slowapi==0.1.10
+# tzdata ships the IANA timezone database for zoneinfo on platforms that
+# lack a system copy (Windows dev machines); harmless on Linux where the
+# system db is already present.
+tzdata==2025.2
 pytest==8.3.4
 httpx==0.28.1

@@ -119,6 +119,10 @@ def test_list_products_does_not_expose_admin_fields(client, shop_a, category_a, 
         "price",
         "status",
         "primary_image_url",
+        "quantity_available",
+        "discount_percent",
+        "color",
+        "brand",
     }
     for forbidden in ("created_by", "shop_id", "description", "images"):
         assert forbidden not in item
@@ -261,6 +265,10 @@ def test_get_product_detail(client, shop_a, category_a, db_session):
         "price",
         "status",
         "primary_image_url",
+        "quantity_available",
+        "discount_percent",
+        "color",
+        "brand",
         "description",
         "images",
     }
