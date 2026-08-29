@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { Eye, ImageOff, Package, Search, ShoppingBag, Tags, TrendingUp, Users } from 'lucide-react';
+import { Eye, Heart, ImageOff, Package, Search, ShoppingBag, Tags, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getRichAnalytics } from '@/services/shopOwner';
 import { getApiErrorMessage } from '@/utils/apiError';
@@ -71,6 +71,46 @@ function EmptyRow({ message }: { message: string }) {
   return <p className="py-4 text-sm text-neutral-400">{message}</p>;
 }
 
+interface TopProductRow {
+  product_id: number;
+  name: string;
+  primary_image_url: string | null;
+  category_name: string | null;
+  count: number;
+}
+
+function TopProductList({
+  rows,
+  unit,
+  emptyMessage,
+}: {
+  rows: TopProductRow[];
+  unit: string;
+  emptyMessage: string;
+}) {
+  if (rows.length === 0) return <EmptyRow message={emptyMessage} />;
+  return (
+    <ul className="mt-3 divide-y divide-neutral-100 dark:divide-neutral-800">
+      {rows.map((p, i) => (
+        <li key={p.product_id} className="flex items-center gap-3 py-2.5">
+          <span className="w-5 shrink-0 text-xs font-medium tabular-nums text-neutral-400">{i + 1}</span>
+          <ProductImage url={p.primary_image_url} name={p.name} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-200">{p.name}</p>
+            {p.category_name && <p className="truncate text-xs text-neutral-400">{p.category_name}</p>}
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-sm font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">
+              {fmt(p.count)}
+            </p>
+            <p className="text-[10px] text-neutral-400">{unit}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function PeriodSelector({ value, onChange }: { value: Period; onChange: (p: Period) => void }) {
   return (
     <div className="flex gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-800 dark:bg-neutral-900">
@@ -96,7 +136,7 @@ export default function AnalyticsPage() {
   const { shop } = useAuth();
   const shopId = shop?.id;
   const [period, setPeriod] = useState<Period>('7d');
-  const [productTab, setProductTab] = useState<'viewed' | 'sold'>('viewed');
+  const [productTab, setProductTab] = useState<'viewed' | 'sold' | 'selected'>('viewed');
 
   const { data, isLoading, isError, error, refetch } = useQuery<RichAnalytics>({
     queryKey: ['shop-owner', 'analytics', 'rich', shopId, period],
@@ -109,6 +149,7 @@ export default function AnalyticsPage() {
     data &&
     (data.visits.current > 0 ||
       data.products_sold.current > 0 ||
+      data.selection_adds.current > 0 ||
       data.top_viewed_products.length > 0);
 
   return (
@@ -148,7 +189,7 @@ export default function AnalyticsPage() {
         <div className="space-y-8">
           <section>
             <SectionLabel>Overview</SectionLabel>
-            <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
               <KpiTile
                 label="Customer Visits"
                 icon={Eye}
@@ -179,6 +220,13 @@ export default function AnalyticsPage() {
                 change={deltaOrNull(data.products_sold)}
                 previousLabel={PERIOD_LABELS[period]}
                 spark={data.sales_series.map((s) => s.sold)}
+              />
+              <KpiTile
+                label="Added to Selection"
+                icon={Heart}
+                value={fmt(data.selection_adds.current)}
+                change={deltaOrNull(data.selection_adds)}
+                previousLabel={PERIOD_LABELS[period]}
               />
             </div>
           </section>
@@ -233,7 +281,7 @@ export default function AnalyticsPage() {
             <div className="flex items-center justify-between">
               <SectionLabel>Top Products</SectionLabel>
               <div className="flex gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-1 text-xs dark:border-neutral-800 dark:bg-neutral-900">
-                {(['viewed', 'sold'] as const).map((tabKey) => (
+                {(['viewed', 'sold', 'selected'] as const).map((tabKey) => (
                   <button
                     key={tabKey}
                     type="button"
@@ -244,68 +292,32 @@ export default function AnalyticsPage() {
                         : 'text-neutral-500 hover:text-neutral-700'
                     }`}
                   >
-                    {tabKey === 'viewed' ? 'Most Viewed' : 'Most Sold'}
+                    {tabKey === 'viewed' ? 'Most Viewed' : tabKey === 'sold' ? 'Most Sold' : 'Most Selected'}
                   </button>
                 ))}
               </div>
             </div>
 
-            {productTab === 'viewed' ? (
-              data.top_viewed_products.length === 0 ? (
-                <EmptyRow message="No product views in this period." />
-              ) : (
-                <ul className="mt-3 divide-y divide-neutral-100 dark:divide-neutral-800">
-                  {data.top_viewed_products.map((p, i) => (
-                    <li key={p.product_id} className="flex items-center gap-3 py-2.5">
-                      <span className="w-5 shrink-0 text-xs font-medium tabular-nums text-neutral-400">
-                        {i + 1}
-                      </span>
-                      <ProductImage url={p.primary_image_url} name={p.name} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-200">
-                          {p.name}
-                        </p>
-                        {p.category_name && (
-                          <p className="truncate text-xs text-neutral-400">{p.category_name}</p>
-                        )}
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-sm font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">
-                          {fmt(p.view_count)}
-                        </p>
-                        <p className="text-[10px] text-neutral-400">views</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )
-            ) : data.top_sold_products.length === 0 ? (
-              <EmptyRow message="No sales recorded in this period. Mark products as Sold to track this." />
-            ) : (
-              <ul className="mt-3 divide-y divide-neutral-100 dark:divide-neutral-800">
-                {data.top_sold_products.map((p, i) => (
-                  <li key={p.product_id} className="flex items-center gap-3 py-2.5">
-                    <span className="w-5 shrink-0 text-xs font-medium tabular-nums text-neutral-400">
-                      {i + 1}
-                    </span>
-                    <ProductImage url={p.primary_image_url} name={p.name} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-200">
-                        {p.name}
-                      </p>
-                      {p.category_name && (
-                        <p className="truncate text-xs text-neutral-400">{p.category_name}</p>
-                      )}
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-sm font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">
-                        {fmt(p.sold_count)}
-                      </p>
-                      <p className="text-[10px] text-neutral-400">sold</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+            {productTab === 'viewed' && (
+              <TopProductList
+                rows={data.top_viewed_products.map((p) => ({ ...p, count: p.view_count }))}
+                unit="views"
+                emptyMessage="No product views in this period."
+              />
+            )}
+            {productTab === 'sold' && (
+              <TopProductList
+                rows={data.top_sold_products.map((p) => ({ ...p, count: p.sold_count }))}
+                unit="sold"
+                emptyMessage="No sales recorded in this period. Mark products as Sold to track this."
+              />
+            )}
+            {productTab === 'selected' && (
+              <TopProductList
+                rows={data.top_selected_products.map((p) => ({ ...p, count: p.add_count }))}
+                unit="adds"
+                emptyMessage="No products added to a customer selection in this period."
+              />
             )}
           </section>
 

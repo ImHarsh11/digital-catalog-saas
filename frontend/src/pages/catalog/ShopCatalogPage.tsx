@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { Filter, Heart, Package, Phone, Search, Sparkles, X } from 'lucide-react';
+import { Filter, Heart, Package, Phone, Search, Sparkles } from 'lucide-react';
 import {
   getShopCatalog,
   listShopProducts,
-  submitCustomerContact,
   toggleProductLike,
   type SortOption,
 } from '@/services/publicCatalog';
@@ -14,6 +13,9 @@ import { formatPrice } from '@/utils/currency';
 import ProductImage from '@/components/catalog/ProductImage';
 import Spinner from '@/components/Spinner';
 import CatalogThemeProvider from '@/components/catalog/CatalogThemeProvider';
+import SelectionButton from '@/components/catalog/SelectionButton';
+import SelectionBar from '@/components/catalog/SelectionBar';
+import CustomerContactSheet, { contactPromptDone } from '@/components/catalog/CustomerContactSheet';
 import CatalogUnavailablePage from './CatalogUnavailablePage';
 import type { PublicProductListItem } from '@/types/publicCatalog';
 
@@ -245,8 +247,9 @@ function ProductCard({
           </p>
           <p className="mt-0.5 text-xs text-neutral-400">{product.category.name}</p>
           {product.brand && <p className="mt-0.5 text-xs text-neutral-400">{product.brand}</p>}
-          <div className="mt-auto pt-2">
+          <div className="mt-auto flex items-end justify-between gap-2 pt-2">
             <PriceDisplay price={product.price} discountPercent={product.discount_percent} />
+            {product.status === 'AVAILABLE' && <SelectionButton slug={slug} productId={product.id} />}
           </div>
           {product.quantity_available <= 3 && product.quantity_available > 0 && product.status === 'AVAILABLE' && (
             <p className="mt-1 text-xs font-medium text-amber-600">
@@ -255,125 +258,6 @@ function ProductCard({
           )}
         </div>
       </Link>
-    </div>
-  );
-}
-
-// ─── Customer contact popup ──────────────────────────────────────────────────
-
-function CustomerContactPopup({
-  shopSlug,
-  onClose,
-  onSubmitted,
-}: {
-  shopSlug: string;
-  onClose: () => void;
-  onSubmitted: () => void;
-}) {
-  const [name, setName] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [email, setEmail] = useState('');
-  const [consentProcessing, setConsentProcessing] = useState(false);
-  const [consentMarketing, setConsentMarketing] = useState(false);
-
-  const hasContact = Boolean(name || whatsapp || email);
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      submitCustomerContact(shopSlug, {
-        name: name || undefined,
-        whatsapp: whatsapp || undefined,
-        email: email || undefined,
-        consent_processing: consentProcessing,
-        consent_marketing: consentMarketing,
-      }),
-    onSuccess: () => onSubmitted(),
-  });
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-md rounded-t-2xl bg-white px-6 pb-8 pt-6 shadow-2xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 text-neutral-400 hover:text-neutral-600"
-        >
-          <X className="h-5 w-5" />
-        </button>
-
-        <h3 className="text-lg font-semibold text-neutral-900">Let the shop help you</h3>
-        <p className="mt-1 text-sm text-neutral-500">
-          Add your details so the shop can assist you faster. Completely optional.
-        </p>
-
-        <div className="mt-4 space-y-3">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          />
-          <input
-            type="tel"
-            value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
-            placeholder="Mobile / WhatsApp number"
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          />
-        </div>
-
-        <div className="mt-4 space-y-2.5">
-          <label className="flex items-start gap-2 text-xs text-neutral-600">
-            <input
-              type="checkbox"
-              checked={consentProcessing}
-              onChange={(e) => setConsentProcessing(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>Store my details so the shop can assist me.</span>
-          </label>
-          <label className="flex items-start gap-2 text-xs text-neutral-600">
-            <input
-              type="checkbox"
-              checked={consentMarketing}
-              onChange={(e) => setConsentMarketing(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>Also send me new arrivals &amp; offers.</span>
-          </label>
-        </div>
-
-        <div className="mt-5 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-          >
-            Skip
-          </button>
-          <button
-            type="button"
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || !hasContact || !consentProcessing}
-            className="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, var(--catalog-primary), var(--catalog-accent))' }}
-          >
-            {mutation.isPending ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -487,11 +371,9 @@ export default function ShopCatalogPage() {
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
 
-  // Customer contact popup
+  // Customer contact sheet — one-time, skippable, persisted per device.
   const [showContactPopup, setShowContactPopup] = useState(false);
-  const [contactDismissed, setContactDismissed] = useState(() => {
-    try { return sessionStorage.getItem('contact_popup_dismissed') === '1'; } catch { return false; }
-  });
+  const [contactDismissed, setContactDismissed] = useState(() => contactPromptDone());
   const productViewCount = useRef(0);
 
   // Likes tracked per session in memory
@@ -1050,22 +932,24 @@ export default function ShopCatalogPage() {
         </main>
       </div>
 
-      {/* Customer contact popup */}
+      {/* Customer contact sheet */}
       {showContactPopup && (
-        <CustomerContactPopup
+        <CustomerContactSheet
           shopSlug={slug}
+          reason="browse"
           onClose={() => {
             setShowContactPopup(false);
             setContactDismissed(true);
-            try { sessionStorage.setItem('contact_popup_dismissed', '1'); } catch {}
           }}
-          onSubmitted={() => {
+          onSaved={() => {
             setShowContactPopup(false);
             setContactDismissed(true);
-            try { sessionStorage.setItem('contact_popup_dismissed', '1'); } catch {}
           }}
         />
       )}
+
+      {/* Floating "My Selection" bar */}
+      <SelectionBar slug={slug} />
 
       {/* Pinterest-style bottom nav (mobile only) */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} shopPhone={shop.phone} />

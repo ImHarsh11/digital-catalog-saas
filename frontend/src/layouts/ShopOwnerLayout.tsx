@@ -9,6 +9,7 @@ import {
   Shirt,
   Sun,
   Tags,
+  Users,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
@@ -171,6 +172,10 @@ export default function ShopOwnerLayout() {
           <NavLink to="/admin/analytics" className={navLinkClass}>
             <BarChart3 className="h-4 w-4" />
             Analytics
+          </NavLink>
+          <NavLink to="/admin/leads" className={navLinkClass}>
+            <Users className="h-4 w-4" />
+            Leads
           </NavLink>
           <NavLink to="/admin/settings" className={navLinkClass}>
             <SettingsIcon className="h-4 w-4" />

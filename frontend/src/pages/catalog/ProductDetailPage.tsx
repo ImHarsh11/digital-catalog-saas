@@ -16,6 +16,7 @@ import ProductImage from '@/components/catalog/ProductImage';
 import Spinner from '@/components/Spinner';
 import Badge from '@/components/Badge';
 import CatalogThemeProvider from '@/components/catalog/CatalogThemeProvider';
+import SelectionButton from '@/components/catalog/SelectionButton';
 import CatalogUnavailablePage from './CatalogUnavailablePage';
 import type { PublicProductImage } from '@/types/publicCatalog';
 
@@ -126,7 +127,7 @@ export default function ProductDetailPage() {
 
   return (
     <CatalogThemeProvider theme={shopData?.theme}>
-    <div className="pb-16" style={{ background: 'var(--catalog-bg)' }}>
+    <div className="pb-28" style={{ background: 'var(--catalog-bg)' }}>
       <div className="sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3 backdrop-blur sm:px-6" style={{ borderColor: 'var(--catalog-hairline)', background: 'color-mix(in srgb, var(--catalog-card) 92%, transparent)' }}>
         <Link
           to={`/shop/${slug}`}
@@ -244,6 +245,23 @@ export default function ProductDetailPage() {
           )}
         </div>
       </div>
+
+      {product.status === 'AVAILABLE' && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-20 border-t px-4 py-3 backdrop-blur sm:px-6"
+          style={{
+            borderColor: 'var(--catalog-hairline)',
+            background: 'color-mix(in srgb, var(--catalog-card) 92%, transparent)',
+          }}
+        >
+          <div className="mx-auto max-w-3xl">
+            <SelectionButton slug={slug} productId={product.id} variant="full" />
+            <p className="mt-1.5 text-center text-xs" style={{ color: 'var(--catalog-ink-muted)' }}>
+              Build a shortlist, then show it to the shop staff for a physical look.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
     </CatalogThemeProvider>
   );
