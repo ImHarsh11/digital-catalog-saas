@@ -17,6 +17,7 @@ from app.schemas.theme import ResolvedTheme
 class PublicCategory(BaseModel):
     id: int
     name: str
+    cover_image_url: str | None = None
 
 
 class PublicShop(BaseModel):
@@ -43,6 +44,7 @@ class PublicShopResponse(BaseModel):
     categories: list[PublicCategory]
     theme: ResolvedTheme
     promos: list[PublicPromo] = []
+    hero_images: list[str] = []
 
 
 class PublicProductImage(BaseModel):

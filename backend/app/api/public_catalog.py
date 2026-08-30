@@ -73,8 +73,12 @@ def _get_shop_or_error(db: Session, shop_slug: str) -> Shop:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=UNAVAILABLE_MESSAGE) from exc
 
 
-def _to_public_category(category: Category) -> PublicCategory:
-    return PublicCategory(id=category.id, name=category.name)
+def _to_public_category(
+    category: Category, cover_url: str | None = None
+) -> PublicCategory:
+    return PublicCategory(
+        id=category.id, name=category.name, cover_image_url=cover_url
+    )
 
 
 def _to_list_item(product: Product) -> PublicProductListItem:
@@ -116,6 +120,8 @@ def get_shop_catalog(
 ) -> PublicShopResponse:
     shop = _get_shop_or_error(db, shop_slug)
     categories = catalog_service.list_categories(db, shop.id)
+    covers = catalog_service.get_category_covers(db, shop.id)
+    hero_images = catalog_service.get_hero_images(db, shop.id)
     catalog_service.record_event(
         db, shop.id, CustomerEventType.SHOP_VIEW, session_id=anon_session_id, device_id=device_id
     )
@@ -132,9 +138,13 @@ def get_shop_catalog(
             city=shop.city,
             website=shop.website,
         ),
-        categories=[_to_public_category(category) for category in categories],
+        categories=[
+            _to_public_category(cat, covers.get(cat.id))
+            for cat in categories
+        ],
         theme=ResolvedTheme(**theme_service.resolve_theme(shop.theme)),
         promos=[PublicPromo(**p) for p in catalog_service.get_promos(db, shop.id)],
+        hero_images=hero_images,
     )
 
 

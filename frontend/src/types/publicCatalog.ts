@@ -4,6 +4,7 @@ import type { ResolvedTheme } from './theme';
 export interface PublicCategory {
   id: number;
   name: string;
+  cover_image_url: string | null;
 }
 
 export interface PublicShop {
@@ -32,6 +33,7 @@ export interface PublicShopResponse {
   categories: PublicCategory[];
   theme: ResolvedTheme;
   promos: PublicPromo[];
+  hero_images: string[];
 }
 
 export interface PublicProductImage {

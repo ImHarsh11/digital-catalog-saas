@@ -76,6 +76,44 @@ def list_categories(db: Session, shop_id: int) -> list[Category]:
     )
 
 
+def get_category_covers(db: Session, shop_id: int) -> dict[int, str]:
+    """Return {category_id: image_url} using the primary image of each
+    category's newest available product. Categories with no product images
+    are omitted."""
+    rows = (
+        db.query(Product.category_id, Product.primary_image_url)
+        .filter(
+            Product.shop_id == shop_id,
+            Product.status == ProductStatus.AVAILABLE,
+            Product.primary_image_url.isnot(None),
+        )
+        .order_by(Product.created_at.desc())
+        .all()
+    )
+    covers: dict[int, str] = {}
+    for cat_id, img_url in rows:
+        if cat_id not in covers:
+            covers[cat_id] = img_url
+    return covers
+
+
+def get_hero_images(db: Session, shop_id: int, limit: int = 5) -> list[str]:
+    """Return up to *limit* product image URLs for the hero carousel,
+    chosen from the newest available products that have images."""
+    rows = (
+        db.query(Product.primary_image_url)
+        .filter(
+            Product.shop_id == shop_id,
+            Product.status == ProductStatus.AVAILABLE,
+            Product.primary_image_url.isnot(None),
+        )
+        .order_by(Product.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
 @dataclass
 class ProductPage:
     items: list[Product]

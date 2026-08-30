@@ -2,7 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { Filter, Heart, Package, Phone, Search, Sparkles } from 'lucide-react';
+import {
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Heart,
+  Package,
+  Phone,
+  Search,
+  Shield,
+  Sparkles,
+  Star,
+  Eye,
+} from 'lucide-react';
 import {
   getShopCatalog,
   listShopProducts,
@@ -56,7 +69,6 @@ function WelcomeSplash({
       className="fixed inset-0 z-50 flex flex-col items-center justify-center"
       style={{ background: 'var(--catalog-splash-grad)' }}
     >
-      {/* Decorative corner ornaments (ornate presets only) */}
       {ornate && (
         <div
           className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -86,14 +98,12 @@ function WelcomeSplash({
         </div>
       )}
 
-      {/* Gold top divider */}
       <div className="mb-10 flex items-center gap-3">
         <div className="h-px w-16 bg-gradient-to-r from-transparent to-yellow-400" />
         <Sparkles className="h-4 w-4 text-yellow-400" />
         <div className="h-px w-16 bg-gradient-to-l from-transparent to-yellow-400" />
       </div>
 
-      {/* Shop logo / initials */}
       <div
         className="mb-6 flex h-28 w-28 items-center justify-center rounded-full border-2 border-yellow-400/60 shadow-2xl"
         style={{
@@ -104,7 +114,6 @@ function WelcomeSplash({
         <span className="text-4xl font-bold tracking-widest text-white drop-shadow-lg">{initials}</span>
       </div>
 
-      {/* Shop name */}
       <h1
         className="px-8 text-center text-3xl font-bold uppercase tracking-[0.15em] text-white drop-shadow-md sm:text-4xl"
         style={{ fontFamily: 'var(--catalog-heading-font)' }}
@@ -112,19 +121,16 @@ function WelcomeSplash({
         {shopName}
       </h1>
 
-      {/* Tagline */}
       <p className="mt-3 text-center text-sm font-light tracking-widest text-yellow-300/80 uppercase">
         {tagline}
       </p>
 
-      {/* Gold bottom divider */}
       <div className="mt-10 flex items-center gap-3">
         <div className="h-px w-16 bg-gradient-to-r from-transparent to-yellow-400" />
         <Sparkles className="h-4 w-4 text-yellow-400" />
         <div className="h-px w-16 bg-gradient-to-l from-transparent to-yellow-400" />
       </div>
 
-      {/* Enter button */}
       <button
         type="button"
         onClick={onEnter}
@@ -133,6 +139,269 @@ function WelcomeSplash({
         Explore Collection
       </button>
     </div>
+  );
+}
+
+// ─── Hero Banner Carousel ────────────────────────────────────────────────────
+
+function HeroBanner({
+  images,
+  shopName,
+  tagline,
+  logoUrl,
+}: {
+  images: string[];
+  shopName: string;
+  tagline: string;
+  logoUrl: string | null;
+}) {
+  const [active, setActive] = useState(0);
+  const count = images.length;
+
+  useEffect(() => {
+    if (count <= 1) return;
+    const id = setInterval(() => setActive((i) => (i + 1) % count), 5000);
+    return () => clearInterval(id);
+  }, [count]);
+
+  const goTo = (idx: number) => setActive(idx);
+  const prev = () => setActive((i) => (i - 1 + count) % count);
+  const next = () => setActive((i) => (i + 1) % count);
+
+  return (
+    <div className="relative overflow-hidden" style={{ minHeight: '320px' }}>
+      {/* Background: product image or gradient */}
+      {count > 0 ? (
+        <div className="absolute inset-0">
+          {images.map((img, i) => (
+            <div
+              key={img}
+              className="absolute inset-0 transition-opacity duration-700"
+              style={{ opacity: i === active ? 1 : 0 }}
+            >
+              <img
+                src={img}
+                alt=""
+                className="h-full w-full object-cover"
+                loading={i === 0 ? 'eager' : 'lazy'}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div
+          className="absolute inset-0"
+          style={{ background: 'var(--catalog-header-grad)' }}
+        />
+      )}
+
+      {/* Dark gradient overlay */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: count > 0
+            ? 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.2) 100%)'
+            : 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
+        }}
+      />
+
+      {/* Content */}
+      <div className="relative flex min-h-[320px] flex-col items-center justify-end px-6 pb-10 pt-16 text-center sm:min-h-[400px] sm:pb-14">
+        {/* Ornamental line */}
+        <div className="mb-5 flex items-center gap-3">
+          <div className="h-px w-10 sm:w-16" style={{ background: 'var(--catalog-accent)' }} />
+          <Sparkles className="h-3.5 w-3.5" style={{ color: 'var(--catalog-accent)' }} />
+          <div className="h-px w-10 sm:w-16" style={{ background: 'var(--catalog-accent)' }} />
+        </div>
+
+        <h2
+          className="text-2xl font-bold leading-tight tracking-wide text-white drop-shadow-lg sm:text-4xl"
+          style={{ fontFamily: 'var(--catalog-heading-font)' }}
+        >
+          {tagline}
+        </h2>
+
+        <p className="mt-2 text-sm text-white/70 sm:text-base">
+          Explore our curated collection
+        </p>
+
+        <a
+          href="#collections"
+          className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-7 py-2.5 text-sm font-semibold uppercase tracking-wider text-white backdrop-blur-sm transition-all hover:bg-white/20 active:scale-95"
+        >
+          Explore Collection
+          <ArrowRight className="h-4 w-4" />
+        </a>
+
+        {/* Dots */}
+        {count > 1 && (
+          <div className="mt-6 flex items-center gap-2">
+            {images.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => goTo(i)}
+                className={`h-2 rounded-full transition-all ${
+                  i === active ? 'w-6' : 'w-2 hover:opacity-80'
+                }`}
+                style={{
+                  background: i === active ? 'var(--catalog-accent)' : 'rgba(255,255,255,0.5)',
+                }}
+                aria-label={`Slide ${i + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Prev / Next arrows (desktop) */}
+      {count > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={prev}
+            className="absolute left-3 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full bg-black/30 p-2 text-white backdrop-blur-sm transition-all hover:bg-black/50 sm:flex"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={next}
+            className="absolute right-3 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full bg-black/30 p-2 text-white backdrop-blur-sm transition-all hover:bg-black/50 sm:flex"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Trust badges ────────────────────────────────────────────────────────────
+
+const TRUST_ITEMS = [
+  { icon: Star, label: 'Curated Collection' },
+  { icon: Shield, label: 'Quality Assured' },
+  { icon: Eye, label: 'Browse Anywhere' },
+  { icon: Heart, label: 'Save Your Picks' },
+];
+
+function TrustBadges() {
+  return (
+    <div
+      className="border-b px-4 py-4 sm:px-6"
+      style={{ borderColor: 'var(--catalog-hairline)', background: 'var(--catalog-card)' }}
+    >
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 overflow-x-auto sm:justify-center sm:gap-10">
+        {TRUST_ITEMS.map(({ icon: Icon, label }) => (
+          <div key={label} className="flex shrink-0 flex-col items-center gap-1.5 sm:flex-row sm:gap-2">
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: 'var(--catalog-accent)' }} />
+            <span className="whitespace-nowrap text-[10px] font-medium sm:text-xs" style={{ color: 'var(--catalog-ink-muted)' }}>
+              {label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Ornamental section heading ──────────────────────────────────────────────
+
+function SectionHeading({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="flex flex-col items-center gap-2 py-2 text-center">
+      <div className="flex items-center gap-3">
+        <div
+          className="h-px w-8 sm:w-14"
+          style={{ background: 'linear-gradient(to right, transparent, var(--catalog-accent))' }}
+        />
+        <Sparkles className="h-3 w-3" style={{ color: 'var(--catalog-accent)' }} />
+        <div
+          className="h-px w-8 sm:w-14"
+          style={{ background: 'linear-gradient(to left, transparent, var(--catalog-accent))' }}
+        />
+      </div>
+      <h2
+        className="text-xl font-bold tracking-wide sm:text-2xl"
+        style={{ color: 'var(--catalog-ink)', fontFamily: 'var(--catalog-heading-font)' }}
+      >
+        {title}
+      </h2>
+      {subtitle && (
+        <p className="text-sm" style={{ color: 'var(--catalog-ink-muted)' }}>
+          {subtitle}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Collection card (category with image) ──────────────────────────────────
+
+function CollectionCard({
+  name,
+  imageUrl,
+  active,
+  onClick,
+}: {
+  name: string;
+  imageUrl: string | null;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const initial = name[0]?.toUpperCase() ?? '?';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative flex flex-col overflow-hidden rounded-2xl shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98] ${
+        active ? 'ring-2 ring-offset-2' : ''
+      }`}
+      style={
+        active
+          ? {
+              '--tw-ring-color': 'var(--catalog-accent)',
+              '--tw-ring-offset-color': 'var(--catalog-bg)',
+            } as React.CSSProperties
+          : undefined
+      }
+    >
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-neutral-100">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={name}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div
+            className="flex h-full w-full items-center justify-center"
+            style={{
+              background: `linear-gradient(135deg, var(--catalog-primary), color-mix(in srgb, var(--catalog-accent) 60%, var(--catalog-primary)))`,
+            }}
+          >
+            <span className="text-3xl font-bold text-white/80">{initial}</span>
+          </div>
+        )}
+        {/* Gradient overlay at bottom */}
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
+      </div>
+      <div className="absolute inset-x-0 bottom-0 p-3 text-left">
+        <p
+          className="text-sm font-semibold leading-tight text-white drop-shadow sm:text-base"
+          style={{ fontFamily: 'var(--catalog-heading-font)' }}
+        >
+          {name}
+        </p>
+        <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-white/75">
+          View Collection <ArrowRight className="h-3 w-3" />
+        </p>
+      </div>
+    </button>
   );
 }
 
@@ -153,7 +422,7 @@ function PriceDisplay({
     return (
       <div className={`flex flex-col ${large ? 'gap-0.5' : 'gap-0'}`}>
         <div className="flex items-center gap-2">
-          <span className={`font-bold text-brand-700 ${large ? 'text-2xl' : 'text-base'}`}>
+          <span className={`font-bold ${large ? 'text-2xl' : 'text-base'}`} style={{ color: 'var(--catalog-primary)' }}>
             {formatPrice(final)}
           </span>
           <span
@@ -162,7 +431,7 @@ function PriceDisplay({
             {Math.round(discountPercent)}% off
           </span>
         </div>
-        <span className={`text-neutral-400 line-through ${large ? 'text-sm' : 'text-xs'}`}>
+        <span className={`line-through ${large ? 'text-sm' : 'text-xs'}`} style={{ color: 'var(--catalog-ink-muted)' }}>
           {formatPrice(price)}
         </span>
       </div>
@@ -170,7 +439,7 @@ function PriceDisplay({
   }
 
   return (
-    <span className={`font-semibold text-neutral-900 ${large ? 'text-2xl' : 'text-base'}`}>
+    <span className={`font-semibold ${large ? 'text-2xl' : 'text-base'}`} style={{ color: 'var(--catalog-ink)' }}>
       {formatPrice(price)}
     </span>
   );
@@ -209,15 +478,19 @@ function ProductCard({
 
   return (
     <div
-      className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
-      style={{ border: '1px solid var(--catalog-hairline)' }}
+      className="group relative flex flex-col overflow-hidden shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+      style={{
+        border: '1px solid var(--catalog-hairline)',
+        borderRadius: 'var(--catalog-card-radius)',
+        background: 'var(--catalog-card)',
+      }}
     >
       {/* Like button */}
       {onLike && (
         <button
           type="button"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike(product.id); }}
-          className="absolute left-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm backdrop-blur-sm transition-all hover:scale-110"
+          className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm backdrop-blur-sm transition-all hover:scale-110"
         >
           <Heart className={`h-4 w-4 transition-colors ${liked ? 'fill-red-500 text-red-500' : 'text-neutral-500'}`} />
         </button>
@@ -227,7 +500,7 @@ function ProductCard({
         className="flex flex-1 flex-col"
         onClick={onProductClick}
       >
-        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-t-2xl bg-neutral-100">
+        <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-100" style={{ borderRadius: 'var(--catalog-card-radius) var(--catalog-card-radius) 0 0' }}>
           <ProductImage
             src={product.primary_image_url}
             alt={product.name}
@@ -236,18 +509,21 @@ function ProductCard({
           <StatusBadge status={product.status} />
 
           {product.discount_percent ? (
-            <div className="absolute right-2 top-2 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-bold text-white shadow">
+            <div
+              className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-bold text-white shadow"
+              style={{ background: 'var(--catalog-primary)' }}
+            >
               -{Math.round(product.discount_percent)}%
             </div>
           ) : null}
         </div>
 
         <div className="flex flex-1 flex-col p-3">
-          <p className="line-clamp-2 text-sm font-medium leading-snug text-neutral-800">
+          <p className="line-clamp-2 text-sm font-medium leading-snug" style={{ color: 'var(--catalog-ink)' }}>
             {product.name}
           </p>
-          <p className="mt-0.5 text-xs text-neutral-400">{product.category.name}</p>
-          {product.brand && <p className="mt-0.5 text-xs text-neutral-400">{product.brand}</p>}
+          <p className="mt-0.5 text-xs" style={{ color: 'var(--catalog-ink-muted)' }}>{product.category.name}</p>
+          {product.brand && <p className="mt-0.5 text-xs" style={{ color: 'var(--catalog-ink-muted)' }}>{product.brand}</p>}
           <div className="mt-auto flex items-end justify-between gap-2 pt-2">
             <PriceDisplay price={product.price} discountPercent={product.discount_percent} />
             {product.status === 'AVAILABLE' && <SelectionButton slug={slug} productId={product.id} />}
@@ -374,7 +650,7 @@ export default function ShopCatalogPage() {
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
 
-  // Customer contact sheet — one-time, skippable, persisted per device.
+  // Customer contact sheet
   const [showContactPopup, setShowContactPopup] = useState(false);
   const [contactDismissed, setContactDismissed] = useState(() => contactPromptDone());
   const productViewCount = useRef(0);
@@ -396,14 +672,12 @@ export default function ShopCatalogPage() {
     [slug],
   );
 
-  // Show contact popup after browsing 5 products (once per session)
   useEffect(() => {
     if (!contactDismissed && productViewCount.current >= 5 && !showContactPopup) {
       setShowContactPopup(true);
     }
   }, [contactDismissed, showContactPopup]);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
   }, [search, categoryId, sort, colorFilter, brandFilter, priceMin, priceMax, activePromo]);
@@ -413,7 +687,6 @@ export default function ShopCatalogPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // When user taps "Search" tab, focus the search box
   useEffect(() => {
     if (activeTab === 'search') {
       setTimeout(() => searchRef.current?.focus(), 100);
@@ -437,8 +710,6 @@ export default function ShopCatalogPage() {
 
   const PAGE_SIZE = 20;
 
-  // A promo banner is a shortcut filter: on_sale → discounted, new_arrivals
-  // → added recently, new_collection → just force newest-first.
   const promoDiscounted = activePromo?.kind === 'on_sale';
   const promoNewDays = activePromo?.kind === 'new_arrivals' ? 21 : undefined;
   const effectiveSort: SortOption = activePromo?.kind === 'new_collection' ? 'newest' : sort;
@@ -520,7 +791,16 @@ export default function ShopCatalogPage() {
   );
   const activeFilterCount = [colorFilter, brandFilter, priceMin, priceMax].filter(Boolean).length;
   const priceRangeInverted = priceMin !== '' && priceMax !== '' && Number(priceMin) > Number(priceMax);
-  const { shop, categories, theme, promos } = catalog;
+  const { shop, categories, theme, promos, hero_images } = catalog;
+
+  const handleCategoryClick = (catId: number) => {
+    const next = categoryId === catId ? '' : catId;
+    setCategoryId(next);
+    setActivePromo(null);
+    if (next !== '') {
+      setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    }
+  };
 
   return (
     <CatalogThemeProvider theme={theme}>
@@ -538,76 +818,73 @@ export default function ShopCatalogPage() {
         className="min-h-screen pb-24 sm:pb-8"
         style={{ background: 'var(--catalog-bg)' }}
       >
-        {/* ── Header ── */}
+        {/* ── Compact header bar ── */}
         <header
-          className="relative overflow-hidden px-4 pb-6 pt-8 sm:px-6"
-          style={{
-            background: 'var(--catalog-header-grad)',
-          }}
+          className="relative z-30 px-4 py-3 sm:px-6"
+          style={{ background: 'var(--catalog-header-grad)' }}
         >
-          {/* Decorative arcs */}
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <svg className="absolute -right-10 -top-10 h-48 w-48 opacity-10" viewBox="0 0 200 200" fill="none">
-              <circle cx="200" cy="0" r="160" stroke="currentColor" strokeWidth="1" />
-              <circle cx="200" cy="0" r="130" stroke="currentColor" strokeWidth="0.5" />
-            </svg>
-          </div>
-
-          <div className="relative mx-auto max-w-5xl">
-            <div className="flex items-center gap-4">
-              {/* Logo */}
+          <div className="mx-auto flex max-w-5xl items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
               {shop.logo_url ? (
-                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border-2 border-yellow-400/40 shadow-lg">
+                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-yellow-400/30 shadow">
                   <img src={shop.logo_url} alt={shop.name} className="h-full w-full object-cover" />
                 </div>
               ) : (
                 <div
-                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-yellow-400/40 shadow-lg"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-yellow-400/30 shadow"
                   style={{
                     background:
                       'radial-gradient(circle at 35% 35%, var(--catalog-accent), color-mix(in srgb, var(--catalog-accent) 55%, #000))',
                   }}
                 >
-                  <span className="text-xl font-bold tracking-wider text-white">
+                  <span className="text-sm font-bold tracking-wider text-white">
                     {shopInitials(shop.name)}
                   </span>
                 </div>
               )}
-
               <div className="min-w-0">
-                <h1 className="truncate text-xl font-bold uppercase tracking-wide text-white sm:text-2xl">
+                <h1
+                  className="truncate text-base font-bold uppercase tracking-wide text-white sm:text-lg"
+                  style={{ fontFamily: 'var(--catalog-heading-font)' }}
+                >
                   {shop.name}
                 </h1>
                 {shop.city && (
-                  <p className="mt-0.5 text-xs font-medium tracking-widest text-yellow-300/70 uppercase">
+                  <p className="text-[10px] font-medium tracking-widest text-yellow-300/60 uppercase">
                     {shop.city}
                   </p>
                 )}
               </div>
             </div>
 
-            {shop.description && (
-              <p className="mt-3 text-sm leading-relaxed text-white/70">{shop.description}</p>
-            )}
-
-            {shop.phone && (
-              <a
-                href={`tel:${shop.phone}`}
-                className="mt-3 inline-flex items-center gap-1.5 text-xs text-yellow-300/80 hover:text-yellow-200"
-              >
-                <Phone className="h-3.5 w-3.5" />
-                {shop.phone}
-              </a>
-            )}
+            <div className="flex items-center gap-2">
+              {shop.phone && (
+                <a
+                  href={`tel:${shop.phone}`}
+                  className="hidden items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:bg-white/10 sm:flex"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  {shop.phone}
+                </a>
+              )}
+            </div>
           </div>
-
-          {/* Gold bottom accent */}
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-yellow-400/60 to-transparent" />
         </header>
+
+        {/* ── Hero Banner ── */}
+        <HeroBanner
+          images={hero_images}
+          shopName={shop.name}
+          tagline={theme.hero_tagline}
+          logoUrl={shop.logo_url}
+        />
+
+        {/* ── Trust badges ── */}
+        <TrustBadges />
 
         {/* ── Promo banners ── */}
         {promos.length > 0 && (
-          <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
             <PromoCarousel
               promos={promos}
               activeKey={activePromo?.key ?? null}
@@ -616,69 +893,34 @@ export default function ShopCatalogPage() {
           </div>
         )}
 
-        {/* ── Category circles ── */}
+        {/* ── Shop by Collection ── */}
         {categories.length > 0 && (
-          <div className="mx-auto max-w-5xl px-4 pt-5 sm:px-6">
-            <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
-              <button
-                type="button"
-                onClick={() => { setCategoryId(''); setActivePromo(null); }}
-                className="flex shrink-0 flex-col items-center gap-1.5"
-              >
-                <div
-                  className={`flex h-14 w-14 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                    categoryId === ''
-                      ? 'scale-110 shadow-lg text-white'
-                      : 'bg-white text-brand-700 shadow-sm hover:shadow-md'
-                  }`}
-                  style={
-                    categoryId === ''
-                      ? { background: 'linear-gradient(135deg, var(--catalog-primary), var(--catalog-accent))' }
-                      : { border: '2px solid var(--catalog-hairline)' }
-                  }
-                >
-                  All
-                </div>
-                <span className={`text-xs font-medium ${categoryId === '' ? 'text-brand-700' : 'text-neutral-500'}`}>
-                  All
-                </span>
-              </button>
-
-              {categories.map((cat) => {
-                const active = categoryId === cat.id;
-                const initial = cat.name[0]?.toUpperCase() ?? '?';
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => { setCategoryId(active ? '' : cat.id); setActivePromo(null); }}
-                    className="flex shrink-0 flex-col items-center gap-1.5"
-                  >
-                    <div
-                      className={`flex h-14 w-14 items-center justify-center rounded-full text-sm font-bold transition-all ${
-                        active ? 'scale-110 text-white shadow-lg' : 'bg-white text-brand-700 shadow-sm hover:shadow-md'
-                      }`}
-                      style={
-                        active
-                          ? { background: 'linear-gradient(135deg, var(--catalog-primary), var(--catalog-accent))' }
-                          : { border: '2px solid var(--catalog-hairline)' }
-                      }
-                    >
-                      {initial}
-                    </div>
-                    <span
-                      className={`max-w-[60px] text-center text-xs font-medium leading-tight ${
-                        active ? 'text-brand-700' : 'text-neutral-500'
-                      }`}
-                    >
-                      {cat.name}
-                    </span>
-                  </button>
-                );
-              })}
+          <section id="collections" className="mx-auto max-w-5xl px-4 pt-8 sm:px-6">
+            <SectionHeading
+              title="Shop by Collection"
+              subtitle="Browse our carefully curated categories"
+            />
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+              {categories.map((cat) => (
+                <CollectionCard
+                  key={cat.id}
+                  name={cat.name}
+                  imageUrl={cat.cover_image_url}
+                  active={categoryId === cat.id}
+                  onClick={() => handleCategoryClick(cat.id)}
+                />
+              ))}
             </div>
-          </div>
+          </section>
         )}
+
+        {/* ── Featured Products heading ── */}
+        <div className="mx-auto max-w-5xl px-4 pt-10 sm:px-6">
+          <SectionHeading
+            title={categoryId ? categories.find((c) => c.id === categoryId)?.name ?? 'Products' : 'Our Collection'}
+            subtitle={activePromo ? activePromo.title : undefined}
+          />
+        </div>
 
         {/* ── Search + sort bar ── */}
         <div
@@ -691,7 +933,7 @@ export default function ShopCatalogPage() {
         >
           <div className="mx-auto flex max-w-5xl items-center gap-2">
             <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--catalog-ink-muted)' }} />
               <input
                 ref={searchRef}
                 type="search"
@@ -702,11 +944,12 @@ export default function ShopCatalogPage() {
                   setActiveTab('search');
                 }}
                 onFocus={() => setActiveTab('search')}
-                placeholder="Search sarees, fabrics…"
+                placeholder="Search products…"
                 className="w-full rounded-full border py-2.5 pl-9 pr-4 text-sm focus:outline-none focus:ring-2"
                 style={{
                   borderColor: 'var(--catalog-hairline)',
-                  background: 'white',
+                  background: 'var(--catalog-card)',
+                  color: 'var(--catalog-ink)',
                   // @ts-ignore
                   '--tw-ring-color': 'var(--catalog-primary)',
                 }}
@@ -721,7 +964,10 @@ export default function ShopCatalogPage() {
               <Filter className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Filters</span>
               {activeFilterCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                <span
+                  className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                  style={{ background: 'var(--catalog-primary)' }}
+                >
                   {activeFilterCount}
                 </span>
               )}
@@ -745,29 +991,29 @@ export default function ShopCatalogPage() {
           {showFilters && (
             <div className="mx-auto mt-3 flex max-w-5xl flex-wrap items-end gap-3">
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-neutral-500">Color</span>
+                <span className="text-xs font-medium" style={{ color: 'var(--catalog-ink-muted)' }}>Color</span>
                 <input
                   type="text"
                   value={colorFilter}
                   onChange={(e) => setColorFilter(e.target.value)}
                   placeholder="e.g. Red"
                   className="w-28 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
-                  style={{ borderColor: 'var(--catalog-hairline)' }}
+                  style={{ borderColor: 'var(--catalog-hairline)', color: 'var(--catalog-ink)' }}
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-neutral-500">Brand</span>
+                <span className="text-xs font-medium" style={{ color: 'var(--catalog-ink-muted)' }}>Brand</span>
                 <input
                   type="text"
                   value={brandFilter}
                   onChange={(e) => setBrandFilter(e.target.value)}
                   placeholder="e.g. Banarasi"
                   className="w-28 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
-                  style={{ borderColor: 'var(--catalog-hairline)' }}
+                  style={{ borderColor: 'var(--catalog-hairline)', color: 'var(--catalog-ink)' }}
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-neutral-500">Min price</span>
+                <span className="text-xs font-medium" style={{ color: 'var(--catalog-ink-muted)' }}>Min price</span>
                 <input
                   type="number"
                   value={priceMin}
@@ -775,11 +1021,11 @@ export default function ShopCatalogPage() {
                   placeholder="₹0"
                   min="0"
                   className="w-24 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
-                  style={{ borderColor: 'var(--catalog-hairline)' }}
+                  style={{ borderColor: 'var(--catalog-hairline)', color: 'var(--catalog-ink)' }}
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-neutral-500">Max price</span>
+                <span className="text-xs font-medium" style={{ color: 'var(--catalog-ink-muted)' }}>Max price</span>
                 <input
                   type="number"
                   value={priceMax}
@@ -787,14 +1033,15 @@ export default function ShopCatalogPage() {
                   placeholder="No limit"
                   min="0"
                   className="w-24 rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1"
-                  style={{ borderColor: 'var(--catalog-hairline)' }}
+                  style={{ borderColor: 'var(--catalog-hairline)', color: 'var(--catalog-ink)' }}
                 />
               </label>
               {activeFilterCount > 0 && (
                 <button
                   type="button"
                   onClick={() => { setColorFilter(''); setBrandFilter(''); setPriceMin(''); setPriceMax(''); }}
-                  className="rounded-full px-3 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50"
+                  className="rounded-full px-3 py-1.5 text-xs font-medium hover:opacity-80"
+                  style={{ color: 'var(--catalog-primary)' }}
                 >
                   Clear filters
                 </button>
@@ -814,7 +1061,7 @@ export default function ShopCatalogPage() {
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-sm font-semibold" style={{ color: 'var(--catalog-primary)' }}>
                 {activePromo.title}
-                <span className="ml-2 text-xs font-normal text-neutral-400">
+                <span className="ml-2 text-xs font-normal" style={{ color: 'var(--catalog-ink-muted)' }}>
                   {total} item{total === 1 ? '' : 's'}
                 </span>
               </p>
@@ -830,7 +1077,7 @@ export default function ShopCatalogPage() {
           )}
           {/* Mobile sort */}
           <div className="mb-3 flex items-center justify-between sm:hidden">
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs" style={{ color: 'var(--catalog-ink-muted)' }}>
               {total > 0 ? `${total} item${total === 1 ? '' : 's'}` : ''}
             </p>
             <select
@@ -856,11 +1103,12 @@ export default function ShopCatalogPage() {
 
           {productsIsError && (
             <div className="flex flex-col items-center py-16 text-center">
-              <p className="text-sm text-neutral-500">Could not load products right now.</p>
+              <p className="text-sm" style={{ color: 'var(--catalog-ink-muted)' }}>Could not load products right now.</p>
               <button
                 type="button"
                 onClick={() => refetchProducts()}
-                className="mt-3 rounded-full px-4 py-1.5 text-sm font-medium text-brand-600 underline"
+                className="mt-3 rounded-full px-4 py-1.5 text-sm font-medium underline"
+                style={{ color: 'var(--catalog-primary)' }}
               >
                 Try again
               </button>
@@ -868,10 +1116,13 @@ export default function ShopCatalogPage() {
           )}
 
           {!productsLoading && !productsIsError && products.length === 0 && !hasFilters && (
-            <div className="flex flex-col items-center rounded-2xl border border-dashed border-neutral-200 bg-white px-6 py-16 text-center">
-              <Package className="h-8 w-8 text-neutral-300" />
-              <p className="mt-3 text-sm font-medium text-neutral-700">No products yet</p>
-              <p className="mt-1 text-xs text-neutral-400">
+            <div
+              className="flex flex-col items-center border border-dashed px-6 py-16 text-center"
+              style={{ borderColor: 'var(--catalog-hairline)', borderRadius: 'var(--catalog-card-radius)', background: 'var(--catalog-card)' }}
+            >
+              <Package className="h-8 w-8" style={{ color: 'var(--catalog-ink-muted)' }} />
+              <p className="mt-3 text-sm font-medium" style={{ color: 'var(--catalog-ink)' }}>No products yet</p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--catalog-ink-muted)' }}>
                 This shop hasn't added any products to their catalog yet.
               </p>
             </div>
@@ -879,23 +1130,26 @@ export default function ShopCatalogPage() {
 
           {!productsLoading && !productsIsError && products.length === 0 && hasFilters && (
             <div className="space-y-6">
-              <div className="flex flex-col items-center rounded-2xl border border-dashed border-neutral-200 bg-white px-6 py-10 text-center">
-                <Search className="h-8 w-8 text-neutral-300" />
-                <p className="mt-3 text-sm font-medium text-neutral-700">No exact matches found</p>
-                <p className="mt-1 text-xs text-neutral-400">Try adjusting your search or filters</p>
+              <div
+                className="flex flex-col items-center border border-dashed px-6 py-10 text-center"
+                style={{ borderColor: 'var(--catalog-hairline)', borderRadius: 'var(--catalog-card-radius)', background: 'var(--catalog-card)' }}
+              >
+                <Search className="h-8 w-8" style={{ color: 'var(--catalog-ink-muted)' }} />
+                <p className="mt-3 text-sm font-medium" style={{ color: 'var(--catalog-ink)' }}>No exact matches found</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--catalog-ink-muted)' }}>Try adjusting your search or filters</p>
                 <button
                   type="button"
-                  onClick={() => { setSearchInput(''); setCategoryId(''); setColorFilter(''); setBrandFilter(''); setPriceMin(''); setPriceMax(''); }}
-                  className="mt-3 rounded-full bg-brand-600 px-4 py-1.5 text-xs font-medium text-white"
+                  onClick={() => { setSearchInput(''); setCategoryId(''); setColorFilter(''); setBrandFilter(''); setPriceMin(''); setPriceMax(''); setActivePromo(null); }}
+                  className="mt-3 rounded-full px-4 py-1.5 text-xs font-medium text-white"
+                  style={{ background: 'var(--catalog-primary)' }}
                 >
                   Clear all filters
                 </button>
               </div>
 
-              {/* Smart search: show available suggestions */}
               {suggestions && suggestions.length > 0 && (
                 <div>
-                  <h3 className="mb-3 text-sm font-semibold text-neutral-700">
+                  <h3 className="mb-3 text-sm font-semibold" style={{ color: 'var(--catalog-ink)' }}>
                     You might also like
                   </h3>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
@@ -910,7 +1164,7 @@ export default function ShopCatalogPage() {
 
           {products.length > 0 && (
             <>
-              <p className="mb-3 hidden text-xs text-neutral-400 sm:block">
+              <p className="mb-3 hidden text-xs sm:block" style={{ color: 'var(--catalog-ink-muted)' }}>
                 {total} item{total === 1 ? '' : 's'}
               </p>
 
@@ -952,7 +1206,7 @@ export default function ShopCatalogPage() {
                     }, [])
                     .map((p, idx) =>
                       p === 'ellipsis' ? (
-                        <span key={`e${idx}`} className="px-1 text-sm text-neutral-400">…</span>
+                        <span key={`e${idx}`} className="px-1 text-sm" style={{ color: 'var(--catalog-ink-muted)' }}>…</span>
                       ) : (
                         <button
                           key={p}
@@ -961,12 +1215,12 @@ export default function ShopCatalogPage() {
                           className={`h-9 w-9 rounded-full text-sm font-medium transition-colors ${
                             page === p
                               ? 'text-white shadow-sm'
-                              : 'border text-neutral-600 hover:bg-neutral-100'
+                              : 'border hover:opacity-80'
                           }`}
                           style={
                             page === p
                               ? { background: 'linear-gradient(135deg, var(--catalog-primary), var(--catalog-accent))' }
-                              : { borderColor: 'var(--catalog-hairline)' }
+                              : { borderColor: 'var(--catalog-hairline)', color: 'var(--catalog-ink)' }
                           }
                         >
                           {p}
@@ -1005,10 +1259,10 @@ export default function ShopCatalogPage() {
         />
       )}
 
-      {/* Floating "My Selection" bar */}
+      {/* Floating "My Choice" bar */}
       <SelectionBar slug={slug} />
 
-      {/* Pinterest-style bottom nav (mobile only) */}
+      {/* Bottom nav (mobile only) */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} shopPhone={shop.phone} />
     </CatalogThemeProvider>
   );
