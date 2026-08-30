@@ -146,14 +146,10 @@ function WelcomeSplash({
 
 function HeroBanner({
   images,
-  shopName,
   tagline,
-  logoUrl,
 }: {
   images: string[];
-  shopName: string;
   tagline: string;
-  logoUrl: string | null;
 }) {
   const [active, setActive] = useState(0);
   const count = images.length;
@@ -874,9 +870,7 @@ export default function ShopCatalogPage() {
         {/* ── Hero Banner ── */}
         <HeroBanner
           images={hero_images}
-          shopName={shop.name}
           tagline={theme.hero_tagline}
-          logoUrl={shop.logo_url}
         />
 
         {/* ── Trust badges ── */}
