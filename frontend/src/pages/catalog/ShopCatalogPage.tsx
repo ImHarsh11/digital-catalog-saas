@@ -5,7 +5,6 @@ import { AxiosError } from 'axios';
 import {
   ChevronLeft,
   ChevronRight,
-  Filter,
   Heart,
   Phone,
   Search,
@@ -1271,14 +1270,19 @@ export default function ShopCatalogPage() {
       <SelectionBar slug={slug} />
 
       {/* Contact sheet */}
-      <CustomerContactSheet
-        slug={slug}
-        open={showContactPopup}
-        onClose={() => {
-          setShowContactPopup(false);
-          setContactDismissed(true);
-        }}
-      />
+      {showContactPopup && (
+        <CustomerContactSheet
+          shopSlug={slug}
+          onClose={() => {
+            setShowContactPopup(false);
+            setContactDismissed(true);
+          }}
+          onSaved={() => {
+            setShowContactPopup(false);
+            setContactDismissed(true);
+          }}
+        />
+      )}
 
       {/* Bottom navigation (mobile) */}
       <BottomNav
